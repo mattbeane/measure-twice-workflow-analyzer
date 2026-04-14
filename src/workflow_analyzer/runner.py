@@ -17,8 +17,8 @@ class RunConfig:
     """Configuration for an analysis run."""
     workflow_data: str
     runs_per_prompt: int = 5
-    model: str = "claude-3-5-haiku-20241022"  # Fast and cheap for bulk runs
-    extraction_model: str = "claude-3-5-haiku-20241022"
+    model: str = "claude-haiku-4-5"  # Fast and cheap for bulk runs
+    extraction_model: str = "claude-haiku-4-5"
     max_concurrent: int = 20  # How many API calls to run in parallel
     max_concurrent_prompts: int = 5  # How many prompts to analyze in parallel
     prompt_ids: Optional[list[str]] = None  # None = all prompts
