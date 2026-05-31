@@ -1,0 +1,141 @@
+WORKFLOW DATA: Escalated Support Ticket to Resolution
+Account: Brightline Health (Enterprise, $300K ARR)
+Ticket: #48211 — "Reports timing out intermittently"
+Timeline: February 10 - February 24, 2026
+
+========================================
+TICKET CREATED
+========================================
+
+From: Support System <noreply@company.com>
+Date: Feb 10, 2026, 7:48 AM
+Priority: High
+Reporter: Dana Whitfield (Brightline Health, Analytics Lead)
+
+Description: "Our scheduled reports time out maybe 1 in 4 runs. No pattern we can see. Started ~2 weeks ago. This feeds our morning ops standup so it's painful."
+
+========================================
+EMAIL THREAD 1: L1 First Response
+========================================
+
+From: Omar Said (L1 Support)
+To: Dana Whitfield <dana@brightlinehealth.com>
+Date: Feb 10, 2026, 11:20 AM
+Subject: RE: [#48211] Reports timing out intermittently
+
+Hi Dana — sorry you're hitting this. To narrow it down: which reports specifically, roughly what time of day do the failures cluster, and how large are the datasets? Anything change on your side ~2 weeks ago?
+
+(First response: ~3.5 hours after ticket created.)
+
+----------------------------------------
+
+From: Dana Whitfield <dana@brightlinehealth.com>
+To: Omar Said (L1 Support)
+Date: Feb 12, 2026, 9:05 AM
+Subject: RE: [#48211] Reports timing out
+
+Mostly the "Daily Census" report, biggest one we run. Failures seem to be early morning. Nothing changed our side that I know of. We did grow — added two new facilities last month, so more data.
+
+(Wait: ~2 days for customer to respond with detail.)
+
+========================================
+SLACK: #support-escalations
+========================================
+
+Feb 12, 2026
+
+Omar Said: Brightline #48211 — intermittent timeouts on their biggest report, started after they added data volume. Beyond me, this looks like a backend perf thing. Escalating to L2.
+Lena Cho (L2 Engineer): I'll take it. Can you attach the failing report IDs and timestamps before you hand it over? Don't want to start blind.
+Omar Said: Pulling them now.
+
+(Handoff: L1 → L2, Feb 12. Omar gathered logs before handoff — clean handoff, no info loss.)
+
+========================================
+EMAIL THREAD 2: L2 Investigation
+========================================
+
+From: Lena Cho (L2 Engineer)
+To: Dana Whitfield <dana@brightlinehealth.com>
+Date: Feb 13, 2026, 10:30 AM
+Subject: RE: [#48211] — digging in
+
+Hi Dana — I've got the failing runs. I can see the Daily Census query is hitting our query timeout when your dataset crosses a size threshold, which lines up with the new facilities. I'm investigating why it's not scaling. Will update by EOD tomorrow.
+
+----------------------------------------
+
+From: Lena Cho (L2 Engineer)
+To: Dana Whitfield <dana@brightlinehealth.com>
+Date: Feb 16, 2026, 4:45 PM
+Subject: RE: [#48211] — status
+
+Quick update: I've reproduced it in our staging environment with a dataset your size. It's a missing database index on a join that only gets slow at your scale. I need to bring in our platform team to confirm the fix is safe to deploy. Thanks for your patience.
+
+(Wait: Lena spent Feb 13–16 reproducing, incl. weekend. Real investigation, solo, complex.)
+
+========================================
+SLACK: #platform-eng
+========================================
+
+Feb 17, 2026
+
+Lena Cho: Got a Brightline timeout traced to a missing index on the census join. I have a candidate fix but I want a senior set of eyes before I propose a schema change on prod. @Raj Patel got 20 min?
+Raj Patel (Senior Engineer): Yeah. Send me your repro. If it's what you think, we don't just add the index — we need to check it doesn't lock the table on a prod migration. Let me show you how I'd reason about that.
+Lena Cho: That's exactly the part I wasn't sure about.
+
+Feb 18, 2026
+
+Raj Patel: Walked through it with Lena. Index is correct but a naive ADD INDEX would lock writes during migration. We'll do it concurrently and off-peak. Lena's writing it up — good instinct escalating before shipping.
+
+(Collaboration: senior engineer teaching L2 to reason about safe prod migrations — high skill yield, complex + collaborative.)
+
+========================================
+MEETING NOTES: Fix Review
+========================================
+
+Date: Feb 19, 2026, 2:00 PM
+Attendees: Lena Cho (L2), Raj Patel (Senior Eng), Sophie Tran (Eng Manager)
+
+Lena presented the diagnosis and the concurrent-index migration plan. Raj confirmed. Sophie approved deploying in the next off-peak window (Feb 21, early AM). Decision: deploy concurrently, monitor, then confirm with customer.
+
+Decision delay: diagnosis ready Feb 18, deploy approved Feb 19, scheduled Feb 21 — gated by off-peak window + manager approval.
+
+========================================
+SLACK: #platform-eng
+========================================
+
+Feb 21, 2026
+
+Raj Patel: Index migration ran clean off-peak this morning. No locking. Census query down from timeout (>30s) to ~2s on a Brightline-sized dataset.
+Lena Cho: Confirmed in staging too. Closing the loop with Dana.
+
+========================================
+EMAIL THREAD 3: Resolution & Confirmation
+========================================
+
+From: Lena Cho (L2 Engineer)
+To: Dana Whitfield <dana@brightlinehealth.com>
+Date: Feb 21, 2026, 9:30 AM
+Subject: RE: [#48211] — fix deployed
+
+Hi Dana — we deployed a fix this morning. Root cause was a missing database index that only became a problem at your new data volume. Your Daily Census report should now run in a couple seconds. Could you run it a few times over the next day or two and confirm it's solid before we close?
+
+----------------------------------------
+
+From: Dana Whitfield <dana@brightlinehealth.com>
+To: Lena Cho (L2 Engineer)
+Date: Feb 24, 2026, 8:15 AM
+Subject: RE: [#48211] — fix deployed
+
+Ran it every morning since — zero timeouts, and it's noticeably faster. Thank you for the thorough fix and for explaining the cause. Fine to close.
+
+(Wait: ~3 days for customer to validate across multiple runs before closing.)
+
+========================================
+TICKET CLOSED
+========================================
+
+Date: Feb 24, 2026, 8:30 AM
+Resolution: Added concurrent database index on census join; resolved scale-driven query timeouts.
+Closed by: Lena Cho (L2 Engineer)
+
+Total cycle: Feb 10 - Feb 24 (14 days).

@@ -1,7 +1,7 @@
 [project]
-name = "workflow-analyzer"
-version = "0.1.0"
-description = "Monte Carlo style workflow analysis using LLMs - Measure Twice, Spend Once"
+name = "measure-twice"
+version = "0.2.0"
+description = "Measure Twice, Spend Once — Monte Carlo workflow analysis using AI"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -16,8 +16,11 @@ dependencies = [
 ]
 
 [project.scripts]
-workflow-analyzer = "workflow_analyzer.cli:main"
+mtso = "workflow_analyzer.cli:main"
+measure-twice = "workflow_analyzer.cli:main"
+# legacy aliases (kept so existing muscle memory / scripts don't break)
 wfa = "workflow_analyzer.cli:main"
+workflow-analyzer = "workflow_analyzer.cli:main"
 
 [build-system]
 requires = ["hatchling"]

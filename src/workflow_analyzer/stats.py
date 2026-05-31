@@ -303,8 +303,9 @@ def calculate_summary(results: list[PromptRunResult]) -> SummaryStats:
     total_input = sum(r.input_tokens for r in results)
     total_output = sum(r.output_tokens for r in results)
 
-    # Haiku pricing: $0.25/1M input, $1.25/1M output
-    cost = (total_input * 0.25 + total_output * 1.25) / 1_000_000
+    # Pricing lives in cost.py (Haiku 4.5: $1/1M in, $5/1M out) — single source of truth.
+    from .cost import cost_of_tokens
+    cost = cost_of_tokens(total_input, total_output)
 
     avg_latency = statistics.mean(r.latency_ms for r in results) if results else 0
 

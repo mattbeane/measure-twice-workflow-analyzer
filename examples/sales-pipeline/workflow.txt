@@ -1,0 +1,184 @@
+WORKFLOW DATA: Inbound Lead to Signed Contract
+Account: Meridian Logistics ($120K ARR opportunity)
+Timeline: March 3 - April 1, 2026
+
+========================================
+EMAIL THREAD 1: Inbound Lead Assignment
+========================================
+
+From: Marketing Automation <noreply@company.com>
+To: SDR Team <sdr@company.com>
+Date: March 3, 2026, 8:02 AM
+Subject: New MQL: Meridian Logistics (requested demo)
+
+New marketing-qualified lead. Priya Nadar, VP Operations at Meridian Logistics, filled out the "request a demo" form. Company size ~600. Note in form: "Evaluating tools to cut our dispatch coordination time. Need something by Q2."
+
+----------------------------------------
+
+From: Dev Okafor (SDR)
+To: Priya Nadar <priya@meridianlogistics.com>
+Date: March 3, 2026, 11:45 AM
+Subject: RE: Your demo request
+
+Hi Priya — thanks for reaching out. I'd love to learn more about your dispatch coordination challenge before we set up a demo. Do you have 15 minutes this week?
+
+(First response: ~3.75 hours after lead came in.)
+
+----------------------------------------
+
+From: Priya Nadar <priya@meridianlogistics.com>
+To: Dev Okafor (SDR)
+Date: March 5, 2026, 4:30 PM
+Subject: RE: Your demo request
+
+Sorry for the delay — slammed. Yes, Thursday afternoon works.
+
+========================================
+SLACK: #sales-deals
+========================================
+
+March 6, 2026
+
+Dev Okafor: Had my discovery call with Meridian. Real pain around dispatch — they're doing it across email + 3 spreadsheets. Budget exists, Priya's the champion but not the economic buyer. Qualifying as SQL and handing to an AE. Who's up?
+Marco Reyes (Sales Manager): Give it to Tana, she knows logistics.
+Dev Okafor: @Tana Brooks handing off Meridian — notes in the CRM. Priya's expecting a demo next week.
+Tana Brooks (AE): Got it. Skimming notes now. Will reach out to schedule the demo.
+
+(Handoff: SDR → AE, March 6. Lead sat 1 day before AE first acted.)
+
+========================================
+EMAIL THREAD 2: Demo Scheduling
+========================================
+
+From: Tana Brooks (AE)
+To: Priya Nadar <priya@meridianlogistics.com>
+Date: March 9, 2026, 10:15 AM
+Subject: Your Meridian demo — let's find a time
+
+Hi Priya — I'm Tana, I'll be your point of contact. Dev filled me in on the dispatch coordination challenge. I'd like to bring our solutions engineer so we can show you exactly how this maps to your spreadsheet workflow. Does next week work? Could you also include whoever owns the budget for this?
+
+----------------------------------------
+
+From: Priya Nadar <priya@meridianlogistics.com>
+To: Tana Brooks (AE)
+Date: March 11, 2026, 2:00 PM
+Subject: RE: Your Meridian demo
+
+Let's do the 17th. I'll bring our COO, Raymond Liu — he holds the budget.
+
+========================================
+SLACK: #se-requests
+========================================
+
+March 11, 2026
+
+Tana Brooks: @Henry Sol need you on a demo the 17th, Meridian Logistics. Logistics/dispatch use case. Their COO will be there so budget's in the room. Can you build a dispatch-flavored demo env?
+Henry Sol (Sales Engineer): Yep. First logistics one you've run, right? Let's prep together — there are a couple traps in how we position the routing module. I'll walk you through it.
+Tana Brooks: That'd help a lot, thank you. I don't know the logistics objections cold yet.
+Henry Sol: Tomorrow 9am, 30 min. I'll show you the three questions a COO always asks and how to answer each.
+
+(Collaboration: senior SE coaching AE on unfamiliar domain before the demo — complex, collaborative.)
+
+========================================
+MEETING NOTES: Demo Prep (internal)
+========================================
+
+Date: March 12, 2026, 9:00 AM
+Attendees: Tana Brooks (AE), Henry Sol (SE)
+
+Henry walked Tana through routing-module positioning and the COO objection set (ROI timeline, switching cost, integration risk). Tana practiced the ROI framing. Henry flagged that Meridian's spreadsheet setup means the integration story is the whole sale. They built the demo env together and divided who speaks when.
+
+Action items:
+- Henry: finish dispatch demo data by the 16th
+- Tana: draft ROI one-pager for Raymond, Henry to review
+
+========================================
+MEETING NOTES: Demo with Meridian
+========================================
+
+Date: March 17, 2026, 1:00 PM
+Attendees: Priya Nadar (VP Ops), Raymond Liu (COO), Tana Brooks (AE), Henry Sol (SE)
+
+Demo went well. Raymond engaged on ROI — asked exactly the questions Henry predicted. Priya loved the routing automation. Raymond's concern: integration with their existing TMS. Henry handled it live. Raymond asked for pricing and a reference customer in logistics.
+
+Next steps: Tana to send pricing + reference. Raymond wants to decide by end of March.
+
+========================================
+EMAIL THREAD 3: Pricing & Approval
+========================================
+
+From: Tana Brooks (AE)
+To: Marco Reyes (Sales Manager)
+Date: March 18, 2026, 9:30 AM
+Subject: Need discount approval — Meridian
+
+Raymond's ready but will need a nudge on price. I want to offer 15% off annual to close by month-end. $120K opportunity. Approve?
+
+----------------------------------------
+
+From: Marco Reyes (Sales Manager)
+To: Tana Brooks (AE)
+Date: March 20, 2026, 5:15 PM
+Subject: RE: Need discount approval — Meridian
+
+Sorry, was at the offsite. 15% is above my limit, had to get VP sign-off. Approved — go.
+
+(Approval delay: ~2.3 days. Above-threshold approval required escalation to VP.)
+
+========================================
+EMAIL THREAD 4: Proposal & Legal
+========================================
+
+From: Tana Brooks (AE)
+To: Raymond Liu <raymond@meridianlogistics.com>
+Date: March 20, 2026, 6:00 PM
+Subject: Meridian proposal + logistics reference
+
+Raymond — proposal attached with the 15% annual discount, plus an intro to a logistics customer happy to be a reference.
+
+----------------------------------------
+
+From: Raymond Liu <raymond@meridianlogistics.com>
+To: Tana Brooks (AE)
+Date: March 24, 2026, 11:00 AM
+Subject: RE: Meridian proposal
+
+Numbers work. Our legal needs to review the data-processing terms before I sign. Sending to them today.
+
+========================================
+SLACK: #sales-deals
+========================================
+
+March 27, 2026
+
+Tana Brooks: Meridian legal came back with redlines on the DPA. Looping in our legal. @Marco Reyes this is the only thing between us and signature.
+Marco Reyes: On it. Legal's backed up but I'll push.
+Tana Brooks: Customer wants to sign by the 31st. Tight.
+
+March 30, 2026
+
+Tana Brooks: Our legal cleared the redlines this morning. Sent the final back to Raymond.
+
+(Bottleneck: legal redline cycle — ~4 days of the final week spent waiting on two legal teams.)
+
+========================================
+EMAIL THREAD 5: Signature
+========================================
+
+From: Raymond Liu <raymond@meridianlogistics.com>
+To: Tana Brooks (AE)
+Date: April 1, 2026, 9:20 AM
+Subject: Signed
+
+Done — signed copy attached. Looking forward to getting started. Priya will lead on our side.
+
+----------------------------------------
+
+From: Tana Brooks (AE)
+To: Sales Team <sales@company.com>
+Date: April 1, 2026, 9:45 AM
+Subject: CLOSED WON: Meridian Logistics $120K
+
+Signed! Thanks Henry for carrying the technical story and coaching me through the logistics objections. Handing to onboarding now.
+
+Total cycle: March 3 - April 1 (29 days).

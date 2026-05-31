@@ -15,14 +15,14 @@ load_dotenv(override=True)
 OUT = Path("demo-output")
 OUT.mkdir(exist_ok=True)
 
-workflow_path = Path("sample_workflow.txt")
+workflow_path = Path("examples/feature-deploy/workflow.txt")
 workflow_data = workflow_path.read_text()
 
-print(f"Running analysis on {workflow_path} (5 runs per prompt)...")
+print(f"Running analysis on {workflow_path} (5 runs per prompt — demo depth)...")
 
 config = RunConfig(
     workflow_data=workflow_data,
-    runs_per_prompt=5,
+    runs_per_prompt=5,  # demo only; real runs default to 1000
     prompt_ids=None,
 )
 

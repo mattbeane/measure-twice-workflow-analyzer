@@ -10,19 +10,22 @@ import anthropic
 
 from .prompts import ALL_PROMPTS, PROMPT_BY_ID, SYSTEM_MESSAGE, PromptDefinition
 from .schemas import PromptRunResult
+from .cost import BudgetTracker
+from . import config as user_config
 
 
 @dataclass
 class RunConfig:
     """Configuration for an analysis run."""
     workflow_data: str
-    runs_per_prompt: int = 5
+    runs_per_prompt: int = 1000  # Statistically defensible by default; adaptive stopping trims it
     model: str = "claude-haiku-4-5"  # Fast and cheap for bulk runs
     extraction_model: str = "claude-haiku-4-5"
     max_concurrent: int = 20  # How many API calls to run in parallel
     max_concurrent_prompts: int = 5  # How many prompts to analyze in parallel
     prompt_ids: Optional[list[str]] = None  # None = all prompts
     temperature: float = 0.7  # Some variance for Monte Carlo effect
+    budget_usd: Optional[float] = None  # Hard spend ceiling; None = no cap
 
     # Adaptive stopping settings (RASC-inspired)
     adaptive_stopping: bool = True
@@ -39,6 +42,8 @@ class RunProgress:
     failed_calls: int = 0
     results: list[PromptRunResult] = field(default_factory=list)
     start_time: float = field(default_factory=time.time)
+    spent_usd: float = 0.0
+    budget_stopped: bool = False  # True if the run halted because the budget was hit
 
     @property
     def elapsed_seconds(self) -> float:
@@ -55,7 +60,9 @@ class WorkflowAnalyzer:
     """Runs Monte Carlo style workflow analysis using parallel LLM calls."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.client = anthropic.AsyncAnthropic(api_key=api_key)
+        # Resolve key: explicit > ANTHROPIC_API_KEY env > config file.
+        resolved = user_config.resolve_api_key(api_key)
+        self.client = anthropic.AsyncAnthropic(api_key=resolved)
 
     async def analyze(
         self,
@@ -87,6 +94,9 @@ class WorkflowAnalyzer:
         # Initialize progress
         progress = RunProgress(total_calls=max_calls)
 
+        # Budget enforcement (shared across all prompts)
+        budget = BudgetTracker(config.budget_usd)
+
         # Semaphore for concurrency control (API calls)
         semaphore = asyncio.Semaphore(config.max_concurrent)
 
@@ -96,7 +106,7 @@ class WorkflowAnalyzer:
         async def run_one_prompt(prompt: PromptDefinition) -> list[PromptRunResult]:
             async with prompt_semaphore:
                 return await self._run_prompt_adaptive(
-                    prompt, config, semaphore, progress, progress_callback
+                    prompt, config, semaphore, progress, budget, progress_callback
                 )
 
         # Run all prompts in parallel (bounded by semaphore)
@@ -119,6 +129,7 @@ class WorkflowAnalyzer:
         config: RunConfig,
         semaphore: asyncio.Semaphore,
         progress: RunProgress,
+        budget: BudgetTracker,
         progress_callback: Optional[Callable[[RunProgress], None]] = None
     ) -> list[PromptRunResult]:
         """
@@ -128,10 +139,19 @@ class WorkflowAnalyzer:
         1. We have at least min_runs_before_stop results
         2. All runs have high confidence
         3. Key metrics have low variance (coefficient of variation < threshold)
+
+        Also halts immediately if the shared budget ceiling is reached.
         """
         results = []
 
         for run_num in range(1, config.runs_per_prompt + 1):
+            # Hard budget ceiling — stop before spending more.
+            if budget.exceeded:
+                progress.budget_stopped = True
+                skipped = config.runs_per_prompt - len(results)
+                progress.total_calls -= skipped
+                break
+
             async with semaphore:
                 result = await self._run_prompt(prompt, run_num, config)
                 results.append(result)
@@ -140,6 +160,8 @@ class WorkflowAnalyzer:
                 if not result.extraction_success:
                     progress.failed_calls += 1
                 progress.results.append(result)
+                budget.add(result.input_tokens, result.output_tokens)
+                progress.spent_usd = budget.spent
 
                 if progress_callback:
                     progress_callback(progress)
