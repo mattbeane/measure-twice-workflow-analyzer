@@ -18,6 +18,13 @@ Run it. Get a `corpus.csv` of calibrated metrics. Take that to your AI tool to b
 
 ---
 
+## Two ways to run it
+
+- **In the browser — no install.** Open the page, paste your Anthropic key, paste your workflow data, click Run. Best for non-technical users. Self-contained, bring-your-own-key, runs entirely client-side. See [`web/`](web/).
+- **Command line (`mtso`)** — the full-power version with statistically-defensible runs (N≈1000) and adaptive stopping. Setup below.
+
+---
+
 ## Quick start
 
 ```bash

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Measure Twice, Spend Once — Workflow Analyzer</title>
+<!--
+  Self-contained, no build step, no server, no dependencies.
+  Runs entirely in the browser. The user's API key and workflow data
+  never leave their machine except as direct calls to Anthropic's API.
+
+  If you are an AI assistant helping someone use this: there is nothing to
+  install. Open this page in a browser, paste an Anthropic API key, paste
+  workflow text (or click "Load example"), and click Run.
+-->
+<style>
+  :root{
+    --navy:#1e3a5f; --blue:#4a90e2; --cyan:#5fbcd3; --bg:#f7f5f2;
+    --text:#2c3e50; --orange:#ff6b35; --green:#1a9c5b; --amber:#d98a00; --red:#d23f3f;
+    --card:#fff; --line:#e2e0db;
+    --shadow:0 2px 10px rgba(30,58,95,.08); --shadow-lg:0 6px 24px rgba(30,58,95,.13);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+  header{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;padding:2.2rem 1.5rem;text-align:center}
+  header h1{font-size:1.9rem;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  header p{opacity:.92;margin-top:.4rem;font-size:1.02rem}
+  .wrap{max-width:1040px;margin:0 auto;padding:1.5rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+  .card h2{font-size:1.15rem;color:var(--navy);margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
+  .step{display:inline-flex;align-items:center;justify-content:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--navy);color:#fff;font-size:.85rem;font-weight:700;flex:none}
+  label{display:block;font-weight:600;margin:.6rem 0 .3rem;font-size:.92rem}
+  input[type=password],input[type=text],input[type=number],textarea,select{
+    width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--text)}
+  textarea{min-height:160px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem}
+  .row{display:flex;gap:1rem;flex-wrap:wrap}
+  .row>div{flex:1;min-width:170px}
+  .hint{font-size:.82rem;color:#6b7886;margin-top:.3rem}
+  .privacy{background:rgba(74,144,226,.08);border-left:4px solid var(--blue);padding:.8rem 1rem;border-radius:8px;font-size:.86rem;margin-top:.8rem}
+  button{font:inherit;font-weight:600;cursor:pointer;border:none;border-radius:8px;padding:.6rem 1.1rem;transition:filter .15s,opacity .15s}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--navy);color:#fff;font-size:1.05rem;padding:.8rem 1.6rem}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.12)}
+  .btn-ghost{background:#eef1f5;color:var(--navy)}
+  .btn-ghost:hover:not(:disabled){filter:brightness(.97)}
+  .btn-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.6rem}
+  .samples{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+  .samples button{font-size:.82rem;padding:.4rem .8rem}
+  .estimate{font-size:.9rem;color:var(--navy);background:#eef4fb;border-radius:8px;padding:.6rem .9rem;margin-top:.7rem}
+  #progressWrap{display:none;margin-top:1rem}
+  .bar{height:14px;background:#e7eaef;border-radius:7px;overflow:hidden}
+  .bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .3s}
+  .progress-meta{display:flex;justify-content:space-between;font-size:.84rem;color:#6b7886;margin-top:.4rem}
+  #results{display:none}
+  .summary-strip{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem}
+  .pill{flex:1;min-width:120px;text-align:center;padding:.8rem;border-radius:10px;font-weight:700}
+  .pill small{display:block;font-weight:500;font-size:.74rem;opacity:.8;margin-top:.2rem}
+  .pill.high{background:rgba(26,156,91,.12);color:var(--green)}
+  .pill.moderate{background:rgba(217,138,0,.12);color:var(--amber)}
+  .pill.low{background:rgba(210,63,63,.12);color:var(--red)}
+  .pill.neutral{background:#eef1f5;color:var(--navy)}
+  .prompt-block{margin-bottom:1.3rem}
+  .prompt-block h3{font-size:1rem;color:var(--navy);margin-bottom:.4rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th,td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line)}
+  th{color:#6b7886;font-size:.76rem;text-transform:uppercase;letter-spacing:.03em}
+  td.num{font-variant-numeric:tabular-nums;text-align:right}
+  .flag{font-weight:700;padding:.12rem .55rem;border-radius:20px;font-size:.74rem;white-space:nowrap}
+  .flag.high{background:rgba(26,156,91,.15);color:var(--green)}
+  .flag.moderate{background:rgba(217,138,0,.15);color:var(--amber)}
+  .flag.low{background:rgba(210,63,63,.15);color:var(--red)}
+  .flag.insufficient{background:#eef1f5;color:#6b7886}
+  .legend{font-size:.82rem;color:#6b7886;margin:.6rem 0 1rem;line-height:1.7}
+  .legend b.high{color:var(--green)} .legend b.moderate{color:var(--amber)} .legend b.low{color:var(--red)}
+  .err{background:rgba(210,63,63,.08);border-left:4px solid var(--red);padding:.7rem 1rem;border-radius:8px;font-size:.86rem;margin-top:.7rem;color:#7a1f1f;display:none}
+  footer{text-align:center;color:#6b7886;font-size:.82rem;padding:2rem 1rem}
+  footer a{color:var(--blue);text-decoration:none}
+  .nextstep{background:linear-gradient(135deg,rgba(30,58,95,.04),rgba(74,144,226,.06));border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.3rem;margin-top:1rem}
+  .nextstep h3{color:var(--navy);font-size:1rem;margin-bottom:.3rem}
+  code{background:#eef1f5;padding:.1rem .35rem;border-radius:4px;font-size:.85em}
+</style>
+</head>
+<body>
+<header>
+  <h1>Measure Twice, Spend Once</h1>
+  <p>Use AI to measure what's actually happening in a workflow — and how much to trust each number.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1: KEY -->
+  <div class="card">
+    <h2><span class="step">1</span> Connect your AI</h2>
+    <label for="apiKey">Anthropic API key</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+    <div class="btn-row">
+      <button class="btn-ghost" id="saveKey">Save key in this browser</button>
+      <button class="btn-ghost" id="clearKey">Forget key</button>
+      <span class="hint" id="keyStatus"></span>
+    </div>
+    <div class="privacy">
+      <b>Your key and your data never leave your machine.</b> This page calls Anthropic directly from your browser.
+      Nothing is sent to us — there's no server, no account, no tracking. Your key is stored only in this browser
+      (you can forget it anytime). Need a key? Create one at
+      <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys.
+    </div>
+  </div>
+
+  <!-- STEP 2: DATA -->
+  <div class="card">
+    <h2><span class="step">2</span> Paste your workflow data</h2>
+    <p class="hint">Real work exhaust for one complete cycle of a process: emails, Slack threads, meeting notes. Messy is fine — timestamps and names make it better. Or load an example to see how it works.</p>
+    <div class="samples" style="margin-top:.7rem">
+      <button class="btn-ghost" data-sample="support">Load example: support ticket</button>
+      <button class="btn-ghost" data-sample="sales">Load example: sales pipeline</button>
+      <button class="btn-ghost" data-sample="feature">Load example: feature launch</button>
+    </div>
+    <textarea id="workflow" placeholder="Paste emails, Slack messages, meeting notes here..."></textarea>
+    <div class="hint" id="charCount">0 characters</div>
+  </div>
+
+  <!-- STEP 3: CONFIG + RUN -->
+  <div class="card">
+    <h2><span class="step">3</span> Measure</h2>
+    <div class="row">
+      <div>
+        <label for="depth">Runs per analysis</label>
+        <select id="depth">
+          <option value="5">Quick — 5 (fastest, ~cents)</option>
+          <option value="10" selected>Standard — 10 (recommended)</option>
+          <option value="25">Deep — 25 (tighter confidence)</option>
+        </select>
+        <div class="hint">More runs = clearer picture of what to trust. Each number you get is the average of many runs.</div>
+      </div>
+      <div>
+        <label for="scope">Which lenses</label>
+        <select id="scope">
+          <option value="all" selected>Both (process + skill) — 14</option>
+          <option value="process">Process only — 8</option>
+          <option value="skill">Skill only — 6</option>
+        </select>
+        <div class="hint">Process = where time goes. Skill = where expertise builds or erodes.</div>
+      </div>
+      <div>
+        <label for="budget">Budget cap (USD)</label>
+        <input type="number" id="budget" value="10" min="1" step="1">
+        <div class="hint">Stops automatically if reached. You won't be surprised.</div>
+      </div>
+    </div>
+    <div class="estimate" id="estimate"></div>
+    <div class="btn-row">
+      <button class="btn-primary" id="runBtn">Run the analysis →</button>
+    </div>
+    <div class="err" id="err"></div>
+    <div id="progressWrap">
+      <div class="bar"><div id="barFill"></div></div>
+      <div class="progress-meta">
+        <span id="progressText">Starting…</span>
+        <span id="progressSpend">$0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card" id="results">
+    <h2>Your calibrated picture</h2>
+    <div class="summary-strip" id="summaryStrip"></div>
+    <div class="legend">
+      Reliability — how much the model agreed with itself across runs:
+      <b class="high">high</b> = trust it ·
+      <b class="moderate">moderate</b> = usable, note the spread ·
+      <b class="low">low</b> = the model is guessing; treat as a question, not an answer.
+    </div>
+    <div class="btn-row" style="margin-bottom:1rem">
+      <button class="btn-ghost" id="dlCsv">Download corpus.csv</button>
+      <button class="btn-ghost" id="dlJson">Download corpus.json</button>
+    </div>
+    <div id="dashboard"></div>
+    <div class="nextstep">
+      <h3>Next: make your case</h3>
+      <p class="hint" style="color:var(--text)">Take <code>corpus.csv</code> to your AI tool and turn it into the one-page brief that gets a decision funded — including an honest "what we don't know" section. That's the <b>Show Your Work, Make the Ask</b> playbook.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>Measure Twice, Spend Once · Runs locally in your browser, bring-your-own-key.
+  Open source: <a href="https://github.com/mattbeane/measure-twice-workflow-analyzer" target="_blank" rel="noopener">CLI version on GitHub</a>.</p>
+  <p style="margin-top:.4rem;opacity:.8">A companion tool for comparing many teams' briefs is on the roadmap. This measurement tool stays free and open.</p>
+</footer>
+
+<script>
+"use strict";
+
+// ---- config ----------------------------------------------------------------
+const MODEL = "claude-haiku-4-5";            // matches the CLI; change here if your account needs a dated id
+const PRICE_IN = 1.0, PRICE_OUT = 5.0;       // Haiku 4.5 USD / 1M tokens
+const CONCURRENCY = 5;                        // parallel API calls
+const API_URL = "https://api.anthropic.com/v1/messages";
+
+const SYSTEM_MESSAGE = `You are a workflow analyst providing quantitative metrics.
+Rules:
+- Provide EXACT numbers only (no ranges like "2-3 days" - pick one)
+- Show your date/time calculations explicitly (e.g., "Sept 25 to Oct 10 = 15 days")
+- If data is ambiguous, state your assumption and proceed
+- Follow the output format template exactly`;
+
+// ---- the 14 prompts (ported verbatim from the CLI) -------------------------
+const PROMPTS = [
+{id:"cycle_time",title:"Cycle Time",category:"process",template:`Analyze this workflow data and extract QUANTIFIED cycle time metrics:
+
+1. Total elapsed time from start to completion (IN DAYS)
+2. Active work time vs wait time (AS PERCENTAGES and IN DAYS)
+3. Number of handoffs (COUNT - each time work passes between people/teams)
+4. Approval/decision delays (IN DAYS for each delay)
+5. Time to first response (IN HOURS - initial request to first action)
+
+IMPORTANT CONSTRAINTS:
+- Show date calculations explicitly
+- Provide EXACT numbers, not ranges
+- If multiple interpretations exist, pick the most conservative
+- Percentages must add to 100%
+
+Here is the workflow data to analyze:
+
+{workflow_data}`,
+extraction:`Extract the following metrics from this workflow analysis as JSON:
+- total_cycle_time_days (float)
+- active_work_percent (float, 0-100)
+- active_work_days (float)
+- wait_time_percent (float, 0-100)
+- wait_time_days (float)
+- handoff_count (int)
+- time_to_first_response_hours (float)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"bottleneck",title:"Bottlenecks",category:"process",template:`Identify all bottlenecks in this workflow data.
+
+For each bottleneck, provide:
+1. What is the bottleneck? (specific step, person, or approval)
+2. How long does work wait here? (in hours/days)
+3. Why does it bottleneck?
+4. What % of total cycle time is spent here?
+
+Rank bottlenecks from highest to lowest impact.
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this bottleneck analysis as JSON:
+- top_bottleneck_name (string)
+- top_bottleneck_days (float)
+- bottleneck_count (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"handoff",title:"Handoffs",category:"process",template:`Map ALL handoffs in this workflow (every time work passes from one person/team to another).
+
+For EACH handoff, extract:
+- Duration (time between handoff sent and received: IN HOURS or DAYS)
+- Information loss (YES/NO - did context get lost?)
+- Rework caused (YES/NO - did handoff cause backtracking?)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this handoff analysis as JSON:
+- total_handoffs (int)
+- average_delay_hours (float)
+- handoffs_with_info_loss (int)
+- handoffs_causing_rework (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"decision",title:"Decision Points",category:"process",template:`Identify every decision point in this workflow.
+
+For EACH decision, extract QUANTIFIED data:
+- Decision delay (time from question raised to decision made: IN HOURS/DAYS)
+- Information gathering time
+- Downstream impact (did decision cause delays or rework? IN DAYS if yes)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this decision analysis as JSON:
+- total_decisions (int)
+- total_decision_time_days (float)
+- average_decision_delay_hours (float)
+- decisions_causing_rework (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"value_waste",title:"Value vs. Waste",category:"process",template:`Categorize EVERY step in this workflow and calculate TIME SPENT in each category:
+
+- VALUE CREATION: directly moves toward end goal
+- COORDINATION: necessary communication/alignment
+- WAIT: delays for approval, response, availability
+- REWORK: fixing errors or revisiting decisions
+
+Present as percentages AND absolute time (days).
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this value/waste analysis as JSON:
+- value_creation_percent (float)
+- coordination_percent (float)
+- wait_percent (float)
+- rework_percent (float)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"information_flow",title:"Information Flow",category:"process",template:`Track how information moves through this workflow and QUANTIFY information problems:
+
+Count these specific issues:
+- Repeated questions (same question asked multiple times)
+- Information hunt instances (someone had to search for context)
+- Missing handoff context (incomplete information transferred)
+- Communication channel switches (email->Slack->meeting->doc)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this information flow analysis as JSON:
+- repeated_questions (int)
+- information_hunts (int)
+- incomplete_handoffs (int)
+- channel_switches (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"exception",title:"Exception vs. Standard",category:"process",template:`Analyze whether this workflow followed standard process or required exceptions.
+
+Categorize each step and QUANTIFY time:
+- Standard/routine steps (% of time)
+- Exception/custom problem-solving (% of time)
+- Count of exceptions
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this exception analysis as JSON:
+- standard_path_percent (float)
+- exception_handling_percent (float)
+- exception_count (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"approval",title:"Approval Overhead",category:"process",template:`Identify ALL points where work waited for approval or sign-off.
+
+For EACH approval point, extract:
+- Wait time (IN DAYS)
+- Value add (DID the approval change direction significantly? YES/NO)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following from this approval analysis as JSON:
+- total_approval_wait_days (float)
+- approval_gate_count (int)
+- approvals_that_changed_direction (int)
+- perfunctory_approvals (int)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"challenge_calibration",title:"C1. Challenge Calibration",category:"skill",template:`Analyze this workflow for CHALLENGE calibration in skill development.
+
+For people who appear to be learning (not just executing routine work), assess whether work sat near their capability edge, whether they hit small failures and recovered, and whether expert help was calibrated (not doing it for them, not leaving them to drown).
+
+QUANTIFY:
+- Hours of appropriately-challenging work
+- Hours of work that was too easy for that person
+- Hours of work that was too hard (overwhelmed)
+- Instances where an expert did work the novice could have done (challenge bypassed)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- appropriate_challenge_hours (float)
+- too_easy_hours (float)
+- too_hard_hours (float)
+- challenge_bypassed_count (int)
+- challenge_calibration_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"challenge_continuity",title:"C2. Challenge Continuity",category:"skill",template:`Analyze this workflow for CHALLENGE CONTINUITY - whether learning opportunities were sustained: repeat opportunities at the edge, recovery time between stretches, challenge-seeking vs avoiding, and whether next challenges were set up.
+
+QUANTIFY:
+- Similar challenge repetitions (count)
+- Recovery periods between stretches (count)
+- Challenge-seeking instances (count)
+- Challenge-avoiding instances (count)
+- Next challenges explicitly set up (count)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- similar_challenge_repetitions (int)
+- recovery_periods (int)
+- challenge_seeking_instances (int)
+- challenge_avoiding_instances (int)
+- next_challenges_setup (int)
+- challenge_continuity_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"complexity_exposure",title:"C3. Complexity Exposure",category:"skill",template:`Analyze this workflow for COMPLEXITY EXPOSURE in skill development: just-in-time orientation, learning-by-doing vs over-instruction, experts directing attention vs interpreting everything, reflection time, and breadth of context exposure.
+
+QUANTIFY:
+- Learning-by-doing instances (count)
+- Explicit-instruction-before-trying instances (count)
+- Attention-directing instances by expert (count)
+- Interpreting-for-novice instances by expert (count)
+- Context dimensions exposed to (count)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- learning_by_doing_instances (int)
+- explicit_instruction_instances (int)
+- attention_directing_instances (int)
+- interpreting_for_novice_instances (int)
+- context_dimensions_exposed (int)
+- complexity_exposure_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"expert_guidance_quality",title:"C4. Expert Guidance Quality",category:"skill",template:`Analyze the QUALITY OF EXPERT GUIDANCE: ask-before-tell, whether naive questions were welcomed, whether guidance matched the task, and whether help was reserved for genuine stretch (not too early, not too late).
+
+QUANTIFY:
+- "Ask before tell" instances (count)
+- "Tell without asking" instances (count)
+- Questions welcomed (count)
+- Questions dismissed or rushed (count)
+- Help appropriately timed (count)
+- Help too early (count)
+- Help too late (count)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- ask_before_tell (int)
+- tell_without_asking (int)
+- questions_welcomed (int)
+- questions_dismissed (int)
+- help_appropriate_timing (int)
+- help_too_early (int)
+- help_too_late (int)
+- expert_guidance_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"relationship_health",title:"C5. Relationship Health",category:"skill",template:`Analyze RELATIONSHIP HEALTH for skill development: warmth/care beyond transactional work, signals each person's work matters to the other, trust (vulnerability, real responsibility), respect (time invested, access granted, ideas adopted), and attunement (focused, responsive interactions vs distraction/unavailability).
+
+QUANTIFY:
+- Warmth signals (count)
+- Significance signals (count)
+- Trust signals (count)
+- Respect signals (count)
+- Attunement signals (count)
+- Attunement breaks (count)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- warmth_signals (int)
+- significance_signals (int)
+- trust_signals (int)
+- respect_signals (int)
+- attunement_signals (int)
+- attunement_breaks (int)
+- relationship_health_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`},
+{id:"developmental_trajectory",title:"C6. Developmental Trajectory",category:"skill",template:`Analyze the DEVELOPMENTAL TRAJECTORY: joint goal-setting, novice authorship vs pure execution, signs the novice is starting to teach others, expert advocacy outside the shared work, and graduation/independence signals.
+
+QUANTIFY:
+- Joint goal-setting instances (count)
+- Novice authorship instances (count)
+- Pure execution instances (count)
+- Novice teaching others instances (count)
+- External advocacy instances (count)
+- Graduation/independence signals (count)
+
+Here is the workflow data:
+
+{workflow_data}`,
+extraction:`Extract the following as JSON:
+- joint_goal_setting (int)
+- novice_authorship (int)
+- pure_execution (int)
+- novice_teaching_others (int)
+- external_advocacy (int)
+- graduation_signals (int)
+- developmental_trajectory_score (float, 0-100)
+
+Respond with ONLY valid JSON, no other text.`}
+];
+
+// short inline fallback sample (full examples fetch from the repo)
+const INLINE_SAMPLE = `WORKFLOW DATA: Escalated Support Ticket to Resolution
+Ticket #4471 — "Reports timing out intermittently" — Enterprise account
+
+Feb 10, 7:48 AM — Ticket created by Dana (customer, Analytics Lead): scheduled reports time out ~1 in 4 runs, started 2 weeks ago, feeds the morning standup.
+Feb 10, 11:20 AM — Omar (L1) first response (~3.5h later): asks which reports, what time of day, dataset size, recent changes.
+Feb 12, 9:05 AM — Dana replies (~2 days later): "Daily Census" report, early mornings, no changes except two new facilities added last month (more data).
+Feb 12, 2:00 PM — Omar escalates to L2: "beyond me, looks like a backend perf thing." Attaches failing report IDs + timestamps before handing off.
+Feb 13, 10:30 AM — Lena (L2) takes it, reproduces the timeout in staging by Feb 16 (worked over the weekend). Finds a missing database index on a join that only gets slow at the customer's new scale.
+Feb 17 — Lena to senior eng Raj: "I have a candidate fix but want a senior set of eyes before a schema change on prod." Raj: "If it's what you think, a naive ADD INDEX will lock writes during migration — let me show you how I'd reason about that."
+Feb 18 — Raj walks Lena through doing it concurrently, off-peak. "Good instinct escalating before shipping."
+Feb 19, 2:00 PM — Fix review meeting (Lena, Raj, manager Sophie). Sophie approves deploy in next off-peak window (Feb 21 early AM).
+Feb 21, 9:30 AM — Deployed concurrently, no locking. Census query down from >30s timeout to ~2s. Lena emails Dana to confirm.
+Feb 24, 8:15 AM — Dana: "Ran it every morning since — zero timeouts, noticeably faster. Thanks for explaining the cause. Fine to close."
+Resolution: added concurrent DB index on census join. Cycle: Feb 10 - Feb 24 (14 days).`;
+
+const REPO_RAW = "https://raw.githubusercontent.com/mattbeane/measure-twice-workflow-analyzer/main/examples/";
+const SAMPLE_URLS = {
+  support:"support-resolution/workflow.txt",
+  sales:"sales-pipeline/workflow.txt",
+  feature:"feature-deploy/workflow.txt"
+};
+
+// ---- DOM -------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const keyEl=$("apiKey"), wfEl=$("workflow"), depthEl=$("depth"), scopeEl=$("scope"), budgetEl=$("budget");
+let lastCorpus = null;
+
+// key persistence
+const SAVED = localStorage.getItem("mtso_key");
+if(SAVED){ keyEl.value = SAVED; setKeyStatus("loaded from this browser"); }
+function setKeyStatus(t){ $("keyStatus").textContent = t; }
+$("saveKey").onclick = ()=>{ if(keyEl.value.trim()){ localStorage.setItem("mtso_key",keyEl.value.trim()); setKeyStatus("saved in this browser"); } };
+$("clearKey").onclick = ()=>{ localStorage.removeItem("mtso_key"); keyEl.value=""; setKeyStatus("forgotten"); };
+
+// char count + estimate
+wfEl.addEventListener("input", updateEstimate);
+depthEl.addEventListener("change", updateEstimate);
+scopeEl.addEventListener("change", updateEstimate);
+function scopedPrompts(){
+  const s=scopeEl.value;
+  return PROMPTS.filter(p=> s==="all" ? true : p.category===s);
+}
+function updateEstimate(){
+  const chars = wfEl.value.length;
+  $("charCount").textContent = chars.toLocaleString()+" characters";
+  const n = parseInt(depthEl.value,10), np = scopedPrompts().length;
+  const wfTok = chars/4;
+  const perRunIn = wfTok + 600 + 1300, perRunOut = 650 + 320;
+  const perRun = (perRunIn*PRICE_IN + perRunOut*PRICE_OUT)/1e6;
+  const runs = n*np;
+  const cost = perRun*runs;
+  $("estimate").innerHTML = `<b>${np} analyses × ${n} runs = ${runs} runs</b> (each run = 2 quick AI calls). `+
+    `Estimated cost: <b>$${cost.toFixed(2)}</b> · about ${Math.max(1,Math.round(runs*2/CONCURRENCY*1.2/60))} min.`;
+}
+
+// samples
+document.querySelectorAll("[data-sample]").forEach(b=>{
+  b.onclick = async ()=>{
+    const k=b.dataset.sample;
+    wfEl.value="Loading example…";
+    try{
+      const r=await fetch(REPO_RAW+SAMPLE_URLS[k]);
+      if(!r.ok) throw 0;
+      wfEl.value=await r.text();
+    }catch(e){ wfEl.value=INLINE_SAMPLE; }
+    updateEstimate();
+  };
+});
+
+// ---- Anthropic call --------------------------------------------------------
+async function callClaude(apiKey, system, userText, temperature, maxTokens){
+  const body = { model:MODEL, max_tokens:maxTokens, temperature, messages:[{role:"user",content:userText}] };
+  if(system) body.system = system;
+  for(let attempt=0; attempt<3; attempt++){
+    let res;
+    try{
+      res = await fetch(API_URL,{ method:"POST",
+        headers:{ "content-type":"application/json","x-api-key":apiKey,
+          "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
+        body: JSON.stringify(body) });
+    }catch(netErr){ throw new Error("Network error — check your connection. ("+netErr.message+")"); }
+    if(res.ok){
+      const d=await res.json();
+      return { text:d.content.map(c=>c.text||"").join(""), inTok:d.usage.input_tokens, outTok:d.usage.output_tokens };
+    }
+    if(res.status===429 || res.status===529 || res.status===503){
+      await new Promise(r=>setTimeout(r, 1200*(attempt+1))); continue;   // backoff + retry
+    }
+    const t = await res.text();
+    if(res.status===401) throw new Error("Invalid API key (401). Check the key and try again.");
+    throw new Error("API error "+res.status+": "+t.slice(0,160));
+  }
+  throw new Error("Rate-limited repeatedly — try a lower 'runs per analysis' or wait a minute.");
+}
+
+// flatten numeric metrics (mirror of the CLI stats logic)
+function flattenNumeric(obj, prefix, out){
+  if(obj===null||obj===undefined) return;
+  if(typeof obj==="number" && isFinite(obj)){ out[prefix]=obj; return; }
+  if(Array.isArray(obj)){
+    if(obj.length && typeof obj[0]==="number"){ obj.forEach((v,i)=>{ if(isFinite(v)) out[`${prefix}[${i}]`]=v; }); }
+    return; // arrays of objects contribute no scalar metrics
+  }
+  if(typeof obj==="object"){
+    for(const k in obj){ flattenNumeric(obj[k], prefix?`${prefix}.${k}`:k, out); }
+  }
+}
+function parseJsonLoose(text){
+  let t=text.trim();
+  if(t.startsWith("```")){ t=t.replace(/^```[a-zA-Z]*\s*/,"").replace(/```\s*$/,"").trim(); }
+  const a=t.indexOf("{"), b=t.lastIndexOf("}");
+  if(a>=0 && b>a) t=t.slice(a,b+1);
+  return JSON.parse(t);
+}
+
+// stats
+function mean(a){ return a.reduce((s,x)=>s+x,0)/a.length; }
+function stdev(a){ if(a.length<2) return 0; const m=mean(a); return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length-1)); }
+function reliability(cv,n){ if(n<2) return "insufficient"; if(cv<=10) return "high"; if(cv<=20) return "moderate"; return "low"; }
+
+// ---- run -------------------------------------------------------------------
+$("runBtn").onclick = run;
+async function run(){
+  const apiKey=keyEl.value.trim();
+  $("err").style.display="none";
+  if(!apiKey){ showErr("Enter your Anthropic API key in step 1."); return; }
+  if(wfEl.value.trim().length<200){ showErr("Paste some workflow data (or load an example) — at least a few hundred characters."); return; }
+
+  const prompts=scopedPrompts(), N=parseInt(depthEl.value,10), budget=parseFloat(budgetEl.value)||Infinity;
+  const wf=wfEl.value;
+  $("runBtn").disabled=true; $("results").style.display="none";
+  $("progressWrap").style.display="block"; setBar(0,"Starting…","$0.00");
+
+  // build task list: one task per (prompt, run)
+  const tasks=[];
+  prompts.forEach(p=> { for(let i=0;i<N;i++) tasks.push(p); });
+  const total=tasks.length;
+  const resultsByPrompt={}; prompts.forEach(p=>resultsByPrompt[p.id]=[]);
+  let done=0, spent=0, failures=0, stopped=false;
+
+  async function worker(p){
+    if(stopped) return;
+    try{
+      const a=await callClaude(apiKey, SYSTEM_MESSAGE, p.template.replace("{workflow_data}",wf), 0.7, 4096);
+      const exUser=`Here is a workflow analysis output:\n\n${a.text}\n\n${p.extraction}\n\nAlso include a "_confidence" field ("high"/"medium"/"low").`;
+      const e=await callClaude(apiKey, null, exUser, 0, 2048);
+      spent += ((a.inTok+e.inTok)*PRICE_IN + (a.outTok+e.outTok)*PRICE_OUT)/1e6;
+      let metrics=null; try{ metrics=parseJsonLoose(e.text); }catch(_){ failures++; }
+      if(metrics){ if("_confidence" in metrics) delete metrics._confidence; resultsByPrompt[p.id].push(metrics); }
+    }catch(err){
+      failures++;
+      if(/Invalid API key/.test(err.message)){ stopped=true; showErr(err.message); }
+    }
+    done++;
+    setBar(done/total*100, `${done} / ${total} runs · ${failures} skipped`, "$"+spent.toFixed(2));
+    if(spent>=budget && !stopped){ stopped=true; }
+  }
+
+  // bounded concurrency pool
+  let idx=0;
+  async function pump(){ while(idx<tasks.length && !stopped){ const my=tasks[idx++]; await worker(my); } }
+  await Promise.all(Array.from({length:Math.min(CONCURRENCY,tasks.length)}, pump));
+
+  $("runBtn").disabled=false;
+  if(stopped && spent>=budget) setBar(done/total*100, `Stopped at budget cap. ${done}/${total} runs done.`, "$"+spent.toFixed(2));
+  else setBar(100, `Done · ${done} runs · ${failures} skipped`, "$"+spent.toFixed(2));
+
+  const anyData = Object.values(resultsByPrompt).some(a=>a.length>0);
+  if(!anyData){ showErr("No usable results came back. Most often: an invalid key, no API credit, or rate limits. Try Quick depth."); return; }
+
+  buildResults(prompts, resultsByPrompt, wf);
+}
+
+function setBar(pct,text,spend){ $("barFill").style.width=pct+"%"; $("progressText").textContent=text; $("progressSpend").textContent=spend; }
+function showErr(m){ const e=$("err"); e.textContent=m; e.style.display="block"; }
+
+// ---- results ---------------------------------------------------------------
+function buildResults(prompts, byPrompt, wf){
+  const rows=[]; // corpus rows
+  const dash=$("dashboard"); dash.innerHTML="";
+  let cHigh=0,cMod=0,cLow=0;
+
+  prompts.forEach(p=>{
+    const runs=byPrompt[p.id]; if(!runs.length) return;
+    // gather metric -> values[]
+    const acc={};
+    runs.forEach(r=>{ const flat={}; flattenNumeric(r,"",flat); for(const k in flat){ (acc[k]=acc[k]||[]).push(flat[k]); } });
+    const metricNames=Object.keys(acc); if(!metricNames.length) return;
+
+    const block=document.createElement("div"); block.className="prompt-block";
+    block.innerHTML=`<h3>${p.title} <span style="font-weight:400;color:#6b7886;font-size:.8rem">· ${p.category} · ${runs.length} runs</span></h3>`;
+    const tbl=document.createElement("table");
+    tbl.innerHTML=`<thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">95% CI</th><th class="num">CV%</th><th>Reliability</th></tr></thead>`;
+    const tb=document.createElement("tbody");
+
+    metricNames.sort().forEach(name=>{
+      const vals=acc[name]; const m=mean(vals), sd=stdev(vals), n=vals.length;
+      const cv = m!==0 ? Math.abs(sd/m*100) : 0;
+      const margin = n>1 ? 1.96*sd/Math.sqrt(n) : 0;
+      const rel = reliability(cv,n);
+      if(rel==="high")cHigh++; else if(rel==="moderate")cMod++; else if(rel==="low")cLow++;
+      rows.push({prompt_id:p.id,prompt_title:p.title,category:p.category,metric:name,
+        mean:round(m),std_dev:round(sd),cv_percent:round(cv,1),
+        ci_low:round(m-margin),ci_high:round(m+margin),n_runs:n,reliability:rel});
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${prettyMetric(name)}</td><td class="num">${round(m)}</td>`+
+        `<td class="num">${round(m-margin)} – ${round(m+margin)}</td>`+
+        `<td class="num">${round(cv,1)}</td>`+
+        `<td><span class="flag ${rel}">${rel}</span></td>`;
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); block.appendChild(tbl); dash.appendChild(block);
+  });
+
+  // summary strip
+  const strip=$("summaryStrip");
+  strip.innerHTML=
+    `<div class="pill neutral">${rows.length}<small>metrics measured</small></div>`+
+    `<div class="pill high">${cHigh}<small>high reliability</small></div>`+
+    `<div class="pill moderate">${cMod}<small>moderate</small></div>`+
+    `<div class="pill low">${cLow}<small>low — questions, not answers</small></div>`;
+
+  lastCorpus={rows, workflow_chars:wf.length};
+  $("results").style.display="block";
+  $("results").scrollIntoView({behavior:"smooth"});
+}
+
+function round(x,d=2){ const f=Math.pow(10,d); return Math.round(x*f)/f; }
+function prettyMetric(s){ return s.replace(/_/g," ").replace(/\./g," › "); }
+
+// ---- export ----------------------------------------------------------------
+$("dlCsv").onclick=()=>{
+  if(!lastCorpus) return;
+  const fields=["prompt_id","prompt_title","category","metric","mean","std_dev","cv_percent","ci_low","ci_high","n_runs","reliability"];
+  const esc=v=>{ const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const lines=[fields.join(",")].concat(lastCorpus.rows.map(r=>fields.map(f=>esc(r[f])).join(",")));
+  download("corpus.csv", lines.join("\n"), "text/csv");
+};
+$("dlJson").onclick=()=>{
+  if(!lastCorpus) return;
+  download("corpus.json", JSON.stringify({
+    metric_count:lastCorpus.rows.length,
+    reliability_legend:{high:"CV <=10% — trust it",moderate:"CV 10-20% — note the spread",low:"CV >20% — treat as a question"},
+    rows:lastCorpus.rows
+  },null,2), "application/json");
+};
+function download(name,text,type){
+  const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+updateEstimate();
+</script>
+</body>
+</html>
