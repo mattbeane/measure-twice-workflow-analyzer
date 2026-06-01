@@ -52,6 +52,13 @@
   .bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .3s}
   .progress-meta{display:flex;justify-content:space-between;font-size:.84rem;color:#6b7886;margin-top:.4rem}
   #results{display:none}
+  #headline{margin-bottom:1.4rem}
+  .hl-group{font-weight:700;color:var(--navy);font-size:.95rem;margin:1rem 0 .5rem}
+  .hl-row{display:flex;align-items:center;gap:.6rem;padding:.4rem .2rem;border-bottom:1px solid var(--line)}
+  .hl-light{font-size:1.1rem;flex:none}
+  .hl-label{flex:1;font-size:.95rem}
+  .hl-val{font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap}
+  .hl-foot{font-size:.8rem;color:#6b7886;margin-top:.8rem;line-height:1.6}
   .summary-strip{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem}
   .pill{flex:1;min-width:120px;text-align:center;padding:.8rem;border-radius:10px;font-weight:700}
   .pill small{display:block;font-weight:500;font-size:.74rem;opacity:.8;margin-top:.2rem}
@@ -168,6 +175,7 @@
   <!-- RESULTS -->
   <div class="card" id="results">
     <h2>Your calibrated picture</h2>
+    <div id="headline"></div>
     <div class="summary-strip" id="summaryStrip"></div>
     <div class="legend">
       Reliability — how much the model agreed with itself across runs:
@@ -551,9 +559,44 @@ function buildResults(prompts, byPrompt, wf){
     `<div class="pill moderate">${cMod}<small>moderate</small></div>`+
     `<div class="pill low">${cLow}<small>low — questions, not answers</small></div>`;
 
+  renderHeadline(rows);
   lastCorpus={rows, workflow_chars:wf.length};
   $("results").style.display="block";
   $("results").scrollIntoView({behavior:"smooth"});
+}
+
+// Headline view — distill the full corpus to a handful of plain-language findings
+// with traffic-light trust. Keep in sync with scripts/make_headline.py.
+const HEADLINE = [
+  ["cycle_time.total_cycle_time_days",     "End-to-end cycle time",                " days", "process"],
+  ["cycle_time.wait_time_percent",         "Time spent waiting, not working",      "%",     "process"],
+  ["bottleneck.top_bottleneck_days",       "Biggest single bottleneck",            " days", "process"],
+  ["approval.total_approval_wait_days",    "Days lost waiting on approvals",       " days", "process"],
+  ["value_waste.rework_percent",           "Time lost to rework",                  "%",     "process"],
+  ["handoff.total_handoffs",               "Handoffs between people/teams",        "",      "process"],
+  ["information_flow.repeated_questions",  "Times the same question got re-asked", "×",     "process"],
+  ["challenge_calibration.challenge_calibration_score", "Were people stretched at the right level? (0–100)", "", "skill"],
+  ["relationship_health.relationship_health_score",     "Relationship climate for skill-building (0–100)",   "", "skill"],
+  ["developmental_trajectory.developmental_trajectory_score", "Are people growing toward independence? (0–100)", "", "skill"],
+];
+const HL_LIGHT={high:"🟢",moderate:"🟡",low:"🔴",insufficient:"⚪"};
+const HL_TRUST={high:"trust it",moderate:"note the spread",low:"the model is guessing",insufficient:"too few runs"};
+function renderHeadline(rows){
+  const idx={}; rows.forEach(r=>{ idx[`${r.prompt_id}.${r.metric}`]=r; });
+  const proc=[], skill=[];
+  HEADLINE.forEach(([key,label,unit,cat])=>{
+    const r=idx[key]; if(!r) return;
+    const v = Math.round(r.mean);
+    const row=`<div class="hl-row"><span class="hl-light">${HL_LIGHT[r.reliability]||"⚪"}</span>`+
+      `<span class="hl-label">${label}</span><span class="hl-val">${v}${unit}</span>`+
+      `<span class="flag ${r.reliability}">${HL_TRUST[r.reliability]||r.reliability}</span></div>`;
+    (cat==="skill"?skill:proc).push(row);
+  });
+  let html="";
+  if(proc.length){ html+=`<div class="hl-group">Where the time goes</div>`+proc.join(""); }
+  if(skill.length){ html+=`<div class="hl-group">What's happening to skill <span style="font-weight:400;color:#6b7886">— thin data here; read as signal, not fact</span></div>`+skill.join(""); }
+  html+=`<div class="hl-foot">🟢 trust it · 🟡 note the spread · 🔴 the model is guessing — a question, not an answer. Full detail (every metric + confidence intervals) is in the table below.</div>`;
+  $("headline").innerHTML = html;
 }
 
 function round(x,d=2){ const f=Math.pow(10,d); return Math.round(x*f)/f; }
