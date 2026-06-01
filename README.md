@@ -75,7 +75,7 @@ The `reliability` column is the whole point. **Low-variance metrics you can take
 ```bash
 mtso configure                 # set up API key + defaults (run once)
 mtso analyze <file>            # full run (default 1000 runs/prompt, ~$50 — you set a budget)
-mtso analyze <file> --quick    # fast demo (10 runs/prompt, a few cents)
+mtso analyze <file> --quick    # fast demo (10 runs/prompt, ~$2 on the sample)
 mtso analyze <file> --budget 25    # hard spend ceiling
 mtso analyze <file> --process-only # just the process prompts
 mtso corpus <session-id>       # re-export corpus.csv from a past run
@@ -92,7 +92,7 @@ mtso prompts                   # list the analysis prompts
 
 A full, statistically defensible run (1000 runs/prompt with adaptive stopping) lands around **$50** on Claude Haiku 4.5 — less for simple workflows, since the tool stops sampling a metric early once it's confident.
 
-Before any real run, the tool shows an estimate and **asks you to set a budget ceiling.** It tracks spend live and stops cleanly if you hit the cap. Use `--quick` (≈ a few cents) to smoke-test your setup first.
+Before any real run, the tool shows an estimate and **asks you to set a budget ceiling.** It tracks spend live and stops cleanly if you hit the cap. Use `--quick` (≈ $2 on the sample, a few minutes) to smoke-test your setup first.
 
 ---
 

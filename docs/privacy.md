@@ -39,4 +39,9 @@ If your security team asks "where does the data go," the answer is: **from the e
 
 ## Reading the code
 
-This is open source. The entire network surface is the Anthropic API calls in `src/workflow_analyzer/runner.py`. There are no other outbound connections. Read it, or have your security team read it.
+This is open source. The network surface is:
+
+1. **The Anthropic API calls** in `src/workflow_analyzer/runner.py` (CLI) and in the browser tool — these carry your workflow data, under your own key.
+2. **Fetching the bundled example workflows from this public GitHub repo** — only when you click a "Load example" button in the browser tool, and only public sample data (never your data).
+
+There are no other outbound connections, no telemetry, no analytics. Read the code, or have your security team read it.

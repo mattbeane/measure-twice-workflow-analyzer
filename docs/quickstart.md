@@ -11,7 +11,7 @@ This gets you from zero to a real analysis. If anything trips you up, see [troub
 3. Left menu → **API Keys** → **Create Key**.
 4. Copy it. It starts with `sk-ant-`. Keep it somewhere safe — you'll paste it once in step 3.
 
-> An API key is like a credit card for AI usage. This tool uses Haiku, the cheapest model. A full run is around $50; a `--quick` test is a few cents. You set a spending cap before every run.
+> An API key is like a credit card for AI usage. This tool uses Haiku, the cheapest model. **Real costs (on the bundled ~15 KB sample):** a `--quick` smoke test (10 runs/prompt) runs about **$2** and takes **a few minutes** — longer on a brand-new account, which starts with low rate limits. A full default run (1,000 runs/prompt, with adaptive stopping) is roughly **$40–50**. Bigger inputs cost more, because your workflow text is sent on every call. **You set a spending cap before every run, and the tool stops when it's hit.**
 
 ---
 
@@ -55,7 +55,9 @@ Paste your key when asked. It's saved to `~/.config/measure-twice/config.toml` o
 mtso analyze examples/feature-deploy/workflow.txt --quick
 ```
 
-`--quick` does a shallow 10-run pass — costs a few cents, finishes in a minute. You'll get an analysis folder with `corpus.csv`, `corpus.json`, and `report.md`. Open `corpus.csv` in Excel or Google Sheets and look at the `reliability` column.
+`--quick` does a shallow 10-run pass — about **$2** and a few minutes on the sample (longer on a brand-new account). You'll get an analysis folder with `corpus.csv`, `corpus.json`, and `report.md`. Open `corpus.csv` in Excel or Google Sheets and look at the `reliability` column.
+
+> The `reliability` column has four values: **high** (trust it), **moderate** (note the spread), **low** (the model disagreed with itself — treat as a question, not an answer), and **insufficient_runs** (too few successful runs to judge — usually means that metric failed extraction on most runs; ignore or re-run deeper).
 
 ---
 
@@ -67,7 +69,7 @@ mtso analyze examples/feature-deploy/workflow.txt --quick
    ```bash
    mtso analyze my-workflow.txt
    ```
-   It'll show a cost estimate and ask you to set a budget. Accept $50 or set your own. It runs for a few minutes.
+   It'll show a cost estimate and ask you to set a budget (default $50). A full run is roughly **$40–50** on a sample-sized input and takes several minutes; larger inputs cost proportionally more. The budget cap is a hard stop.
 
 3. **Open `my-workflow-analysis/corpus.csv`.** That's your calibrated picture. The high-reliability rows are trustworthy. The low-reliability rows are questions to dig into.
 

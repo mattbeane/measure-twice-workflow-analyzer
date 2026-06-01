@@ -120,7 +120,20 @@ def analyze(
                       "(or export ANTHROPIC_API_KEY).")
         raise typer.Exit(1)
 
-    workflow_data = workflow_file.read_text()
+    # Read the workflow file tolerantly. Outlook/Word exports are often cp1252,
+    # not UTF-8 — decode errors here used to crash with a raw traceback.
+    try:
+        workflow_data = workflow_file.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        workflow_data = workflow_file.read_text(encoding="utf-8", errors="replace")
+        if not quiet:
+            console.print("[yellow]Note:[/] the file wasn't clean UTF-8 (common with Outlook/Word "
+                          "exports). Decoded with replacements — analysis will still work.")
+
+    if len(workflow_data.strip()) < 200 and not quiet:
+        console.print("[yellow]Warning:[/] this workflow file is very short. "
+                      "You'll get thin, low-confidence results. Paste in more of the real "
+                      "emails / Slack / notes for a meaningful analysis.")
 
     # Resolve N: --quick > --runs > config default
     if quick:
@@ -191,13 +204,34 @@ def analyze(
                            description=f"Analyzing... (${p.spent_usd:.2f})")
             return await analyzer.analyze(config, update)
 
-    results = asyncio.run(run_with_progress())
+    # Ctrl-C used to discard everything — but Anthropic still billed for the work
+    # already done. Capture whatever completed so it's saved, not silently lost.
+    interrupted = False
+    try:
+        results = asyncio.run(run_with_progress())
+    except KeyboardInterrupt:
+        interrupted = True
+        results = getattr(analyzer, "_last_progress_results", None) or []
+        console.print("\n[yellow]Interrupted.[/] Saving the runs that already completed "
+                      "(you were billed for those) so they aren't lost…")
 
     if not results:
-        console.print("[red]No results produced.[/] Check your API key and connection.")
+        console.print("[red]No results produced.[/] Most likely: an invalid/empty-balance API "
+                      "key, no network, or you interrupted before any run finished. "
+                      "Check your key at console.anthropic.com → Billing.")
         raise typer.Exit(1)
 
     summary = calculate_summary(results)
+
+    # Loud failure summary — never report a cheerful "Done" over a pile of failures.
+    if summary.total_failed > 0 and not quiet:
+        frac = summary.total_failed / max(1, summary.total_runs)
+        msg = (f"[yellow]{summary.total_failed} of {summary.total_runs} calls failed[/] "
+               f"({frac*100:.0f}%).")
+        if frac >= 0.5:
+            msg += (" [red]Over half failed[/] — results below are thin. Common causes: "
+                    "rate limits on a new account (wait a minute, re-run), or no API balance.")
+        console.print(msg)
 
     # Persist session
     storage = AnalysisStorage(str(db))

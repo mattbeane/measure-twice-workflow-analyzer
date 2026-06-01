@@ -25,7 +25,7 @@ Either way it's a static file — any host works (Replit, Netlify, GitHub Pages,
 ## Before the alpha — 2 quick checks
 
 1. **Model id.** Top of the `<script>`: `const MODEL = "claude-haiku-4-5";`. If a tester sees an error mentioning the model (404 / "model not found"), their account needs a dated id — swap it there (e.g. a `claude-haiku-4-5-YYYYMMDD` string) and redeploy. Test once with your own key first.
-2. **One real run.** Paste your key, click "Load example: support ticket", leave depth on Standard, Run. You should see the progress bar fill, a live spend counter (a few cents), and a results table where the **reliability** column has a mix of green/amber/red. That red is the point — it's the model telling you which numbers not to trust.
+2. **One real run.** Paste your key, click "Load example: support ticket", leave mode on **Quick read (30 runs)**, Run. You should see the progress bar fill, a live spend counter (a couple of dollars), and a results table where the **reliability** column has a mix of green/amber/red. That red is the point — it's the model telling you which numbers not to trust.
 
 ---
 
@@ -33,7 +33,7 @@ Either way it's a static file — any host works (Replit, Netlify, GitHub Pages,
 
 1. **Connect** — paste Anthropic key (optionally save to browser). Clear privacy statement.
 2. **Paste data** — their own workflow, or one of three loaded examples (fetched from the public repo; falls back to an inline sample if offline).
-3. **Measure** — pick depth (5/10/25 runs), lenses (process / skill / both), and a budget cap. Live cost estimate updates as they type.
+3. **Measure** — pick mode (Quick read 30 runs / Deep 200 runs), lenses (process / skill / both), and a budget cap. Live cost estimate (a range) updates as they type.
 4. **Run** — bounded-concurrency Monte Carlo with progress + live spend; stops cleanly at the budget cap; survives individual call failures.
 5. **Results** — calibrated dashboard: per-metric mean, 95% CI, CV%, and a color-coded reliability flag. Summary strip counts high/moderate/low.
 6. **Export** — `corpus.csv` and `corpus.json` download locally. Next-step pointer to the brief playbook.
@@ -42,9 +42,9 @@ Either way it's a static file — any host works (Replit, Netlify, GitHub Pages,
 
 ## Cost & limits
 
-- Cost scales with data size × runs × number of analyses. The example at Standard depth (10 runs) is roughly **$1–2** on Haiku 4.5. A budget cap (default $10) hard-stops the run.
+- Cost scales with data size × runs × number of analyses. The bundled example at **Quick read (30 runs)** is roughly **$3–5** on Haiku 4.5 (adaptive stopping usually lands it lower). A budget cap (default $5) hard-stops the run; leave it blank or 0 for no cap.
 - Each tester uses their own key, so rate limits are per-tester. Concurrency is capped at 5 to stay gentle.
-- This browser tool is tuned for **modest N** (≤25). The full statistically-defensible N≈1000 run lives in the CLI (`mtso`) — link in the footer.
+- This browser tool is for a **fast, directional read** (30–200 runs). The full statistically-defensible N≈1000 run lives in the CLI (`mtso`) — a browser can't responsibly fire that many calls. Link in the footer.
 
 ---
 

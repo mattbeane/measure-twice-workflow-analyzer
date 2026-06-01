@@ -93,6 +93,9 @@ class WorkflowAnalyzer:
 
         # Initialize progress
         progress = RunProgress(total_calls=max_calls)
+        # Expose live results so a KeyboardInterrupt in the caller can still
+        # persist whatever completed (the user was billed for it).
+        self._last_progress_results = progress.results
 
         # Budget enforcement (shared across all prompts)
         budget = BudgetTracker(config.budget_usd)
