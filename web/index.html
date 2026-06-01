@@ -217,289 +217,76 @@ Rules:
 
 // ---- the 14 prompts (ported verbatim from the CLI) -------------------------
 const PROMPTS = [
-{id:"cycle_time",title:"Cycle Time",category:"process",template:`Analyze this workflow data and extract QUANTIFIED cycle time metrics:
-
-1. Total elapsed time from start to completion (IN DAYS)
-2. Active work time vs wait time (AS PERCENTAGES and IN DAYS)
-3. Number of handoffs (COUNT - each time work passes between people/teams)
-4. Approval/decision delays (IN DAYS for each delay)
-5. Time to first response (IN HOURS - initial request to first action)
-
-IMPORTANT CONSTRAINTS:
-- Show date calculations explicitly
-- Provide EXACT numbers, not ranges
-- If multiple interpretations exist, pick the most conservative
-- Percentages must add to 100%
-
-Here is the workflow data to analyze:
-
-{workflow_data}`,
-extraction:`Extract the following metrics from this workflow analysis as JSON:
-- total_cycle_time_days (float)
-- active_work_percent (float, 0-100)
-- active_work_days (float)
-- wait_time_percent (float, 0-100)
-- wait_time_days (float)
-- handoff_count (int)
-- time_to_first_response_hours (float)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"bottleneck",title:"Bottlenecks",category:"process",template:`Identify all bottlenecks in this workflow data.
-
-For each bottleneck, provide:
-1. What is the bottleneck? (specific step, person, or approval)
-2. How long does work wait here? (in hours/days)
-3. Why does it bottleneck?
-4. What % of total cycle time is spent here?
-
-Rank bottlenecks from highest to lowest impact.
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this bottleneck analysis as JSON:
-- top_bottleneck_name (string)
-- top_bottleneck_days (float)
-- bottleneck_count (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"handoff",title:"Handoffs",category:"process",template:`Map ALL handoffs in this workflow (every time work passes from one person/team to another).
-
-For EACH handoff, extract:
-- Duration (time between handoff sent and received: IN HOURS or DAYS)
-- Information loss (YES/NO - did context get lost?)
-- Rework caused (YES/NO - did handoff cause backtracking?)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this handoff analysis as JSON:
-- total_handoffs (int)
-- average_delay_hours (float)
-- handoffs_with_info_loss (int)
-- handoffs_causing_rework (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"decision",title:"Decision Points",category:"process",template:`Identify every decision point in this workflow.
-
-For EACH decision, extract QUANTIFIED data:
-- Decision delay (time from question raised to decision made: IN HOURS/DAYS)
-- Information gathering time
-- Downstream impact (did decision cause delays or rework? IN DAYS if yes)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this decision analysis as JSON:
-- total_decisions (int)
-- total_decision_time_days (float)
-- average_decision_delay_hours (float)
-- decisions_causing_rework (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"value_waste",title:"Value vs. Waste",category:"process",template:`Categorize EVERY step in this workflow and calculate TIME SPENT in each category:
-
-- VALUE CREATION: directly moves toward end goal
-- COORDINATION: necessary communication/alignment
-- WAIT: delays for approval, response, availability
-- REWORK: fixing errors or revisiting decisions
-
-Present as percentages AND absolute time (days).
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this value/waste analysis as JSON:
-- value_creation_percent (float)
-- coordination_percent (float)
-- wait_percent (float)
-- rework_percent (float)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"information_flow",title:"Information Flow",category:"process",template:`Track how information moves through this workflow and QUANTIFY information problems:
-
-Count these specific issues:
-- Repeated questions (same question asked multiple times)
-- Information hunt instances (someone had to search for context)
-- Missing handoff context (incomplete information transferred)
-- Communication channel switches (email->Slack->meeting->doc)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this information flow analysis as JSON:
-- repeated_questions (int)
-- information_hunts (int)
-- incomplete_handoffs (int)
-- channel_switches (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"exception",title:"Exception vs. Standard",category:"process",template:`Analyze whether this workflow followed standard process or required exceptions.
-
-Categorize each step and QUANTIFY time:
-- Standard/routine steps (% of time)
-- Exception/custom problem-solving (% of time)
-- Count of exceptions
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this exception analysis as JSON:
-- standard_path_percent (float)
-- exception_handling_percent (float)
-- exception_count (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"approval",title:"Approval Overhead",category:"process",template:`Identify ALL points where work waited for approval or sign-off.
-
-For EACH approval point, extract:
-- Wait time (IN DAYS)
-- Value add (DID the approval change direction significantly? YES/NO)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following from this approval analysis as JSON:
-- total_approval_wait_days (float)
-- approval_gate_count (int)
-- approvals_that_changed_direction (int)
-- perfunctory_approvals (int)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"challenge_calibration",title:"C1. Challenge Calibration",category:"skill",template:`Analyze this workflow for CHALLENGE calibration in skill development.
-
-For people who appear to be learning (not just executing routine work), assess whether work sat near their capability edge, whether they hit small failures and recovered, and whether expert help was calibrated (not doing it for them, not leaving them to drown).
-
-QUANTIFY:
-- Hours of appropriately-challenging work
-- Hours of work that was too easy for that person
-- Hours of work that was too hard (overwhelmed)
-- Instances where an expert did work the novice could have done (challenge bypassed)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- appropriate_challenge_hours (float)
-- too_easy_hours (float)
-- too_hard_hours (float)
-- challenge_bypassed_count (int)
-- challenge_calibration_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"challenge_continuity",title:"C2. Challenge Continuity",category:"skill",template:`Analyze this workflow for CHALLENGE CONTINUITY - whether learning opportunities were sustained: repeat opportunities at the edge, recovery time between stretches, challenge-seeking vs avoiding, and whether next challenges were set up.
-
-QUANTIFY:
-- Similar challenge repetitions (count)
-- Recovery periods between stretches (count)
-- Challenge-seeking instances (count)
-- Challenge-avoiding instances (count)
-- Next challenges explicitly set up (count)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- similar_challenge_repetitions (int)
-- recovery_periods (int)
-- challenge_seeking_instances (int)
-- challenge_avoiding_instances (int)
-- next_challenges_setup (int)
-- challenge_continuity_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"complexity_exposure",title:"C3. Complexity Exposure",category:"skill",template:`Analyze this workflow for COMPLEXITY EXPOSURE in skill development: just-in-time orientation, learning-by-doing vs over-instruction, experts directing attention vs interpreting everything, reflection time, and breadth of context exposure.
-
-QUANTIFY:
-- Learning-by-doing instances (count)
-- Explicit-instruction-before-trying instances (count)
-- Attention-directing instances by expert (count)
-- Interpreting-for-novice instances by expert (count)
-- Context dimensions exposed to (count)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- learning_by_doing_instances (int)
-- explicit_instruction_instances (int)
-- attention_directing_instances (int)
-- interpreting_for_novice_instances (int)
-- context_dimensions_exposed (int)
-- complexity_exposure_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"expert_guidance_quality",title:"C4. Expert Guidance Quality",category:"skill",template:`Analyze the QUALITY OF EXPERT GUIDANCE: ask-before-tell, whether naive questions were welcomed, whether guidance matched the task, and whether help was reserved for genuine stretch (not too early, not too late).
-
-QUANTIFY:
-- "Ask before tell" instances (count)
-- "Tell without asking" instances (count)
-- Questions welcomed (count)
-- Questions dismissed or rushed (count)
-- Help appropriately timed (count)
-- Help too early (count)
-- Help too late (count)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- ask_before_tell (int)
-- tell_without_asking (int)
-- questions_welcomed (int)
-- questions_dismissed (int)
-- help_appropriate_timing (int)
-- help_too_early (int)
-- help_too_late (int)
-- expert_guidance_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"relationship_health",title:"C5. Relationship Health",category:"skill",template:`Analyze RELATIONSHIP HEALTH for skill development: warmth/care beyond transactional work, signals each person's work matters to the other, trust (vulnerability, real responsibility), respect (time invested, access granted, ideas adopted), and attunement (focused, responsive interactions vs distraction/unavailability).
-
-QUANTIFY:
-- Warmth signals (count)
-- Significance signals (count)
-- Trust signals (count)
-- Respect signals (count)
-- Attunement signals (count)
-- Attunement breaks (count)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- warmth_signals (int)
-- significance_signals (int)
-- trust_signals (int)
-- respect_signals (int)
-- attunement_signals (int)
-- attunement_breaks (int)
-- relationship_health_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`},
-{id:"developmental_trajectory",title:"C6. Developmental Trajectory",category:"skill",template:`Analyze the DEVELOPMENTAL TRAJECTORY: joint goal-setting, novice authorship vs pure execution, signs the novice is starting to teach others, expert advocacy outside the shared work, and graduation/independence signals.
-
-QUANTIFY:
-- Joint goal-setting instances (count)
-- Novice authorship instances (count)
-- Pure execution instances (count)
-- Novice teaching others instances (count)
-- External advocacy instances (count)
-- Graduation/independence signals (count)
-
-Here is the workflow data:
-
-{workflow_data}`,
-extraction:`Extract the following as JSON:
-- joint_goal_setting (int)
-- novice_authorship (int)
-- pure_execution (int)
-- novice_teaching_others (int)
-- external_advocacy (int)
-- graduation_signals (int)
-- developmental_trajectory_score (float, 0-100)
-
-Respond with ONLY valid JSON, no other text.`}
+{
+  id:"cycle_time", title:"1. Cycle Time Extraction", category:"process",
+  template:"Analyze this workflow data and extract QUANTIFIED cycle time metrics:\n\n1. Total elapsed time from start to completion (IN DAYS)\n2. Active work time vs wait time (AS PERCENTAGES and IN DAYS)\n3. Number of handoffs (COUNT - each time work passes between people/teams)\n4. Approval/decision delays (IN DAYS for each delay)\n5. Time to first response (IN HOURS - initial request to first action)\n\nIMPORTANT CONSTRAINTS:\n- Show date calculations explicitly (e.g., \"Sept 25 to Oct 10 = 15 days\")\n- Provide EXACT numbers, not ranges\n- If multiple interpretations exist, pick the most conservative\n- Percentages must add to 100%\n- Use this EXACT output format:\n\nCYCLE TIME METRICS:\n- Total cycle time: X days [show calculation: start date to end date]\n- Active work: Y% (Z days)\n- Wait time: W% (V days)\n- Handoffs: N count\n- Time to first response: H hours\n\nHere is the workflow data to analyze:\n\n{workflow_data}",
+  extraction:"Extract the following metrics from this workflow analysis as JSON:\n- total_cycle_time_days (float)\n- active_work_percent (float, 0-100)\n- active_work_days (float)\n- wait_time_percent (float, 0-100)\n- wait_time_days (float)\n- handoff_count (int)\n- time_to_first_response_hours (float)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"bottleneck", title:"2. Bottleneck Identification", category:"process",
+  template:"Identify all bottlenecks in this workflow data.\n\nFor each bottleneck, provide:\n1. What is the bottleneck? (specific step, person, or approval)\n2. How long does work wait here? (in hours/days)\n3. Why does it bottleneck? (capacity, dependencies, approval chains)\n4. What % of total cycle time is spent here?\n\nRank bottlenecks from highest to lowest impact.\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this bottleneck analysis as JSON:\n- bottlenecks: array of objects with {name, wait_time_days, percent_of_cycle_time, reason}\n- top_bottleneck_name (string)\n- top_bottleneck_days (float)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"handoff", title:"3. Handoff Analysis", category:"process",
+  template:"Map ALL handoffs in this workflow (every time work passes from one person/team to another).\n\nFor EACH handoff, extract:\n- Duration (time between handoff sent and received: IN HOURS or DAYS)\n- Information loss (YES/NO - did context get lost?)\n- Rework caused (YES/NO - did handoff cause backtracking?)\n\nPresent as:\n\nHANDOFF COUNT: N total handoffs\n\nHANDOFF DETAILS:\n1. [Person A] \u2192 [Person B]: X hours delay, [info loss: Y/N], [rework: Y/N]\n2. [Person B] \u2192 [Person C]: X hours delay, [info loss: Y/N], [rework: Y/N]\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this handoff analysis as JSON:\n- total_handoffs (int)\n- handoffs: array of {from_person, to_person, delay_hours, information_loss (bool), caused_rework (bool)}\n- average_delay_hours (float)\n- handoffs_with_info_loss (int)\n- handoffs_causing_rework (int)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"decision", title:"4. Decision Point Mapping", category:"process",
+  template:"Identify every decision point in this workflow.\n\nFor EACH decision, extract QUANTIFIED data:\n- Decision delay (time from question raised to decision made: IN HOURS/DAYS)\n- Information gathering time (time spent collecting data to decide)\n- Downstream impact (did decision cause delays or rework? IN DAYS if yes)\n\nPresent as:\n\nDECISION COUNT: N total decisions\n\nDECISION METRICS:\nDecision #1: [What was decided]\n- Who decided: [person/role]\n- Decision delay: X hours/days\n- Info gathering time: Y hours\n- Downstream delay caused: Z days (or \"none\")\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this decision analysis as JSON:\n- total_decisions (int)\n- decisions: array of {description, decider, delay_hours, info_gathering_hours, downstream_delay_days}\n- total_decision_time_days (float)\n- average_decision_delay_hours (float)\n- decisions_causing_rework (int)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"value_waste", title:"5. Value vs. Waste", category:"process",
+  template:"Categorize EVERY step in this workflow and calculate TIME SPENT in each category:\n\n- VALUE CREATION: directly moves toward end goal (IN DAYS or HOURS)\n- COORDINATION: necessary communication/alignment (IN DAYS or HOURS)\n- WAIT: delays for approval, response, availability (IN DAYS or HOURS)\n- REWORK: fixing errors or revisiting decisions (IN DAYS or HOURS)\n\nPresent as percentages AND absolute time:\n\nTIME ALLOCATION:\n- Value creation: X days (Y%)\n- Coordination: X days (Y%)\n- Wait: X days (Y%)\n- Rework: X days (Y%)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this value/waste analysis as JSON:\n- value_creation_days (float)\n- value_creation_percent (float)\n- coordination_days (float)\n- coordination_percent (float)\n- wait_days (float)\n- wait_percent (float)\n- rework_days (float)\n- rework_percent (float)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"information_flow", title:"6. Information Flow", category:"process",
+  template:"Track how information moves through this workflow and QUANTIFY information problems:\n\nCount these specific issues:\n- Repeated questions (COUNT - same question asked multiple times)\n- Information hunt instances (COUNT - someone had to search for context)\n- Missing handoff context (COUNT - incomplete information transferred)\n- Communication channel switches (COUNT - email\u2192Slack\u2192meeting\u2192doc)\n\nPresent as:\n\nINFORMATION FLOW METRICS:\n- Repeated questions: N count\n- Information hunts: M count\n- Incomplete handoffs: P count\n- Channel switches: Q count\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this information flow analysis as JSON:\n- repeated_questions (int)\n- information_hunts (int)\n- incomplete_handoffs (int)\n- channel_switches (int)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"exception", title:"7. Exception vs. Standard Path", category:"process",
+  template:"Analyze whether this workflow followed standard process or required exceptions.\n\nCategorize each step and QUANTIFY time:\n- Standard/routine steps: X hours (Y% of time)\n- Exception/custom problem-solving: Z hours (W% of time)\n\nFor exceptions, extract:\n- Count of exceptions: N total\n- Time consumed by exceptions: X days\n\nPresent as:\n\nPROCESS ADHERENCE:\n- Standard path time: X days (Y%)\n- Exception handling: Z days (W%)\n- Exception count: N instances\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this exception analysis as JSON:\n- standard_path_days (float)\n- standard_path_percent (float)\n- exception_handling_days (float)\n- exception_handling_percent (float)\n- exception_count (int)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"approval", title:"8. Approval Overhead", category:"process",
+  template:"Identify ALL points where work waited for approval or sign-off.\n\nFor EACH approval point, extract:\n- Wait time (IN DAYS or HOURS)\n- Value add assessment (DID the approval change direction significantly? YES/NO)\n\nPresent as:\n\nAPPROVAL OVERHEAD:\n- Total approval wait time: X days\n- Number of approval gates: N count\n- Approvals that changed direction: M count\n- Approvals that were perfunctory: Q count\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this approval analysis as JSON:\n- total_approval_wait_days (float)\n- approval_gate_count (int)\n- approvals_that_changed_direction (int)\n- perfunctory_approvals (int)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"challenge_calibration", title:"C1. Challenge Calibration", category:"skill",
+  template:"Analyze this workflow for CHALLENGE calibration in skill development.\n\nFor each person who appears to be learning/developing (not just executing routine work), assess:\n\n1. WORK AT THE EDGE: Was work assigned near their capability edge?\n   - Signs of edge work: requires near-total focus, can perform well but not at best\n   - Signs of too easy: routine execution, no struggle visible\n   - Signs of too hard: drowning, excessive help needed, unable to progress\n\n2. SMALL FAILURES + RECOVERY: Did they experience small failures and recover?\n   - Count specific instances of struggle/failure in the communications\n   - Did they recover from each? How long did recovery take?\n\n3. EXPERT HELP CALIBRATION: When experts helped, was it calibrated correctly?\n   - Good: Help on tasks just beyond novice's reach, then stepped back\n   - Bad: Expert did it for them (novice cut out of challenge)\n   - Bad: Expert left them to drown (no support when needed)\n\n4. FRUSTRATION MANAGEMENT: Did experts acknowledge stretch/remind of payoff?\n   - Look for encouragement, acknowledgment of difficulty, reminders of learning value\n\nFor EACH novice-expert pair, provide:\n- Novice name, Expert name\n- Work edge assessment (too easy / appropriate / too hard)\n- Small failure count and recovery count\n- Help calibration instances (appropriate help / over-helped / under-helped)\n- Frustration management signals (present / absent)\n\nQUANTIFY:\n- Hours of appropriately-challenging work\n- Hours of work that was too easy (cruise/routine for this person)\n- Hours of work that was too hard (overwhelmed, unable to progress)\n- Instances where expert did work that novice could have done (challenge bypassed)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this challenge analysis as JSON:\n- pairs: array of {novice, expert, edge_assessment (string: \"too_easy\"/\"appropriate\"/\"too_hard\"), small_failures (int), recoveries (int), help_appropriate (int), help_over (int), help_under (int), frustration_mgmt_present (bool)}\n- appropriate_challenge_hours (float)\n- too_easy_hours (float)\n- too_hard_hours (float)\n- challenge_bypassed_count (int) - times expert did work novice could have done\n- challenge_calibration_score (float, 0-100) - overall assessment\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"challenge_continuity", title:"C2. Challenge Continuity", category:"skill",
+  template:"Analyze this workflow for CHALLENGE CONTINUITY - whether learning opportunities were sustained.\n\nLook for:\n\n1. REPEAT OPPORTUNITIES: Did the novice face similar challenges multiple times?\n   - Skill builds through repetition at the edge\n   - One-off challenges don't build durable skill\n   - Count instances of similar challenge types\n\n2. RECOVERY TIME: Was there time between intense challenge bursts?\n   - Some straightforward work or off-time between stretches\n   - Constant stretch = burnout risk\n   - All cruise = no growth\n\n3. CHALLENGE SEEKING: Did novices seek/create challenge or avoid it?\n   - Proactive: volunteering for hard work, asking for stretch assignments\n   - Passive: waiting to be assigned, avoiding difficulty\n   - Look for explicit asks or offers in the communications\n\n4. FUTURE CHALLENGE SETUP: Were next challenges identified/prepared?\n   - Expert setting up next learning opportunity\n   - Pipeline of appropriately-difficult work visible\n\nQUANTIFY:\n- Similar challenge repetitions (count)\n- Recovery periods between stretches (count, and average duration in hours)\n- Challenge-seeking instances by novice (count)\n- Challenge-avoiding instances by novice (count)\n- Next challenges explicitly set up (count)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this challenge continuity analysis as JSON:\n- similar_challenge_repetitions (int)\n- recovery_periods (int)\n- avg_recovery_hours (float)\n- challenge_seeking_instances (int)\n- challenge_avoiding_instances (int)\n- next_challenges_setup (int)\n- challenge_continuity_score (float, 0-100)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"complexity_exposure", title:"C3. Complexity Exposure", category:"skill",
+  template:"Analyze this workflow for COMPLEXITY EXPOSURE in skill development.\n\nLook for:\n\n1. JUST-IN-TIME ORIENTATION: Did novices learn basics close to when they started work?\n   - Good: Brief orientation then hands-on\n   - Bad: Long front-loaded training before doing\n   - Bad: Thrown in with zero orientation\n\n2. IMPLICIT vs EXPLICIT LEARNING: How did learning happen?\n   - Good: Learning by doing, figuring things out\n   - Bad: Excessive explicit instruction before trying\n   - Count instances of each\n\n3. ATTENTION DIRECTION vs INTERPRETATION: When experts guided, did they:\n   - Good: Point to where to look, ask what novice notices\n   - Bad: Interpret/explain everything for the novice\n   - Count \"look at X\" vs \"here's what X means\" instances\n\n4. REFLECTION TIME: Was there slack time to reflect on the work?\n   - Away from active work initially\n   - During work as expertise develops\n   - Look for debrief, retrospective, or thinking time\n\n5. CONTEXT BREADTH: Did novice engage with full work context or narrow slice?\n   - Good: Exposure to customer, business, technical dimensions\n   - Bad: Siloed to just their technical piece\n\nQUANTIFY:\n- Orientation time before work started (hours)\n- Learning-by-doing instances (count)\n- Explicit-instruction-before-trying instances (count)\n- Attention-directing instances by expert (count)\n- Interpreting-for-novice instances by expert (count)\n- Reflection/debrief time (hours)\n- Context dimensions exposed to (count: technical, customer, business, etc.)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this complexity exposure analysis as JSON:\n- orientation_hours (float)\n- learning_by_doing_instances (int)\n- explicit_instruction_instances (int)\n- attention_directing_instances (int)\n- interpreting_for_novice_instances (int)\n- reflection_time_hours (float)\n- context_dimensions_exposed (int)\n- complexity_exposure_score (float, 0-100)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"expert_guidance_quality", title:"C4. Expert Guidance Quality", category:"skill",
+  template:"Analyze the QUALITY OF EXPERT GUIDANCE in this workflow.\n\nFor each expert-novice interaction, assess:\n\n1. ASK BEFORE TELL: Did expert solicit novice's assessment before sharing theirs?\n   - Good: \"What do you think is happening?\" before explaining\n   - Bad: Immediately telling/explaining\n   - Count instances of each\n\n2. NAIVE QUESTIONS ENCOURAGED: Were \"silly\" questions treated as assets?\n   - Good: Welcoming basic questions, using them to teach\n   - Bad: Dismissing, rushing past, or showing impatience\n   - Look for question-asking patterns and responses\n\n3. GUIDANCE MATCHED TO TASK: Did guidance style match task structure?\n   - Structured task = more structured guidance appropriate\n   - Unstructured task = more fluid/exploratory guidance appropriate\n   - Was there mismatch?\n\n4. HELP RESERVED FOR STRETCH: Did expert reserve help for tasks just beyond novice's reach?\n   - Good: Helping only when novice genuinely stuck\n   - Bad: Jumping in too early (novice could have figured it out)\n   - Bad: Waiting too long (novice wasted significant time)\n\nQUANTIFY:\n- \"Ask before tell\" instances (count)\n- \"Tell without asking\" instances (count)\n- Questions welcomed (count)\n- Questions dismissed or rushed (count)\n- Guidance-task match instances (count)\n- Guidance-task mismatch instances (count)\n- Help appropriately timed (count)\n- Help too early (count)\n- Help too late (count)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this expert guidance analysis as JSON:\n- ask_before_tell (int)\n- tell_without_asking (int)\n- questions_welcomed (int)\n- questions_dismissed (int)\n- guidance_task_match (int)\n- guidance_task_mismatch (int)\n- help_appropriate_timing (int)\n- help_too_early (int)\n- help_too_late (int)\n- expert_guidance_score (float, 0-100)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"relationship_health", title:"C5. Relationship Health", category:"skill",
+  template:"Analyze RELATIONSHIP HEALTH for skill development in this workflow.\n\nFor each expert-novice relationship, assess:\n\n1. WARMTH AND CARE: Is there evidence of bonding beyond transactional work?\n   - Encouragement, praise for effort (not just results)\n   - Personal acknowledgment\n   - Concern for wellbeing/development\n\n2. SIGNIFICANCE: Does each person seem to feel their work matters to the other?\n   - Recognition of contributions\n   - Explicit acknowledgment of value\n   - Being kept in the loop vs cut out\n\n3. TRUST SIGNALS: Willingness to be vulnerable because they expect delivery\n   - Novice admitting confusion or mistakes\n   - Expert delegating real responsibility\n   - Honest feedback exchange\n\n4. RESPECT SIGNALS: Willingness to give valuable resources (time, access, opportunities)\n   - Expert investing time in teaching\n   - Novice given access to important work/people\n   - Ideas taken seriously regardless of source\n\n5. ATTUNEMENT: Were both parties focused and present during interactions?\n   - Limiting distractions during teaching moments\n   - Responsive to questions/needs\n   - vs. Distracted, delayed, or unavailable\n\nQUANTIFY:\n- Warmth signals (count: encouragement, praise, care expressions)\n- Significance signals (count: recognition, acknowledgment, inclusion)\n- Trust signals (count: vulnerability shown, responsibility given)\n- Respect signals (count: time invested, access granted, ideas adopted)\n- Attunement signals (count: focused interactions, responsive exchanges)\n- Attunement breaks (count: delayed responses, unavailability, distraction)\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this relationship health analysis as JSON:\n- warmth_signals (int)\n- significance_signals (int)\n- trust_signals (int)\n- respect_signals (int)\n- attunement_signals (int)\n- attunement_breaks (int)\n- relationship_health_score (float, 0-100)\n\nRespond with ONLY valid JSON, no other text."
+},
+{
+  id:"developmental_trajectory", title:"C6. Developmental Trajectory", category:"skill",
+  template:"Analyze the DEVELOPMENTAL TRAJECTORY visible in this workflow.\n\nLook for signals about where this expert-novice relationship is heading:\n\n1. JOINT GOAL-SETTING: Were learning/development goals discussed together?\n   - Good: Collaborative discussion of what novice should learn\n   - Bad: Top-down assignment with no input\n   - Look for explicit goal conversations\n\n2. AUTHORSHIP: Does novice have ownership over their work and learning path?\n   - Good: Novice's ideas adopted, approach respected\n   - Bad: Just executing expert's plan with no agency\n   - Count instances of novice authorship vs pure execution\n\n3. TEACHING OTHERS: Any signs novice is starting to help/teach others?\n   - This signals significant skill development\n   - Even small instances count (explaining to peers, documenting for others)\n\n4. EXTERNAL ADVOCACY: Did expert advocate for novice outside their shared work?\n   - Recommending for opportunities\n   - Praising to others\n   - Building novice's reputation\n\n5. GRADUATION SIGNALS: Evidence relationship is evolving toward independence?\n   - Expert stepping back on tasks novice has mastered\n   - Novice taking on work without expert involvement\n   - Planning for novice to lead\n\nQUANTIFY:\n- Joint goal-setting instances (count)\n- Novice authorship instances (count)\n- Pure execution instances (count)\n- Novice teaching others instances (count)\n- External advocacy instances (count)\n- Graduation/independence signals (count)\n\nTRAJECTORY ASSESSMENT:\n- Positive: Clear evidence of growth trajectory\n- Neutral: Insufficient signal to assess\n- Concerning: Signs of stagnation or regression\n\nHere is the workflow data:\n\n{workflow_data}",
+  extraction:"Extract the following from this trajectory analysis as JSON:\n- joint_goal_setting (int)\n- novice_authorship (int)\n- pure_execution (int)\n- novice_teaching_others (int)\n- external_advocacy (int)\n- graduation_signals (int)\n- trajectory_assessment (string: \"positive\"/\"neutral\"/\"concerning\")\n- developmental_trajectory_score (float, 0-100)\n\nRespond with ONLY valid JSON, no other text."
+},
 ];
 
 // short inline fallback sample (full examples fetch from the repo)
