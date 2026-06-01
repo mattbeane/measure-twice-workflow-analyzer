@@ -1,8 +1,8 @@
 # Prompt Library
 
-The 14 prompts the analyzer runs against your workflow data — 8 process, 6 skill (the skill set follows the *3 Cs* from *The Skill Code*: Challenge, Complexity, Connection).
+The exact 14 prompts the analyzer runs against your workflow data — 8 process, 6 skill (the skill set follows the *3 Cs* from *The Skill Code*: Challenge, Complexity, Connection). Shown verbatim, including the `{workflow_data}` slot where the data goes.
 
-**Two ways to use them:** the tool runs all 14 for you, calibrated across many runs. Or paste any single prompt below into your own AI chat (Claude, ChatGPT) for a quick, un-calibrated taste — replace the bracketed line with your own emails / Slack / notes.
+**Human- and machine-readable, same text.** The tool drops your workflow into `{workflow_data}` and runs each prompt many times, calibrated. Or copy any prompt below into your own AI chat for a quick, un-calibrated taste — just replace `{workflow_data}` with your own emails / Slack / notes.
 
 ---
 
@@ -37,7 +37,7 @@ CYCLE TIME METRICS:
 
 Here is the workflow data to analyze:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 2. Bottleneck Identification
@@ -56,7 +56,7 @@ Rank bottlenecks from highest to lowest impact.
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 3. Handoff Analysis
@@ -80,7 +80,7 @@ HANDOFF DETAILS:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 4. Decision Point Mapping
@@ -107,7 +107,7 @@ Decision #1: [What was decided]
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 5. Value vs. Waste
@@ -131,7 +131,7 @@ TIME ALLOCATION:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 6. Information Flow
@@ -156,7 +156,7 @@ INFORMATION FLOW METRICS:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 7. Exception vs. Standard Path
@@ -182,7 +182,7 @@ PROCESS ADHERENCE:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### 8. Approval Overhead
@@ -205,7 +205,7 @@ APPROVAL OVERHEAD:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 
@@ -251,7 +251,7 @@ QUANTIFY:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### C2. Challenge Continuity
@@ -290,7 +290,7 @@ QUANTIFY:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### C3. Complexity Exposure
@@ -336,7 +336,7 @@ QUANTIFY:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### C4. Expert Guidance Quality
@@ -380,7 +380,7 @@ QUANTIFY:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### C5. Relationship Health
@@ -426,7 +426,7 @@ QUANTIFY:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
 
 ### C6. Developmental Trajectory
@@ -476,5 +476,5 @@ TRAJECTORY ASSESSMENT:
 
 Here is the workflow data:
 
-[Paste your workflow data here — emails, Slack, meeting notes]
+{workflow_data}
 ```
