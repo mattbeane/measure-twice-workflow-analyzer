@@ -23,3 +23,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Large raw run logs (corpus files are the deliverable)
+demo-output/n1000/runs.jsonl
+demo-output/n1000/progress.txt
+demo-output/n1000/watch.txt
