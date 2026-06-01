@@ -10,6 +10,9 @@ __pycache__/
 .venv/
 venv/
 .python-version
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Analysis artifacts
 *.db
