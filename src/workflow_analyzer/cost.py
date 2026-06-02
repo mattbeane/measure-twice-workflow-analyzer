@@ -1,37 +1,39 @@
 """Cost estimation and budget enforcement.
 
-A "solid" statistically-defensible run (N≈1000 with adaptive stopping) lands around
-$50 on Haiku 4.5. We never silently cap — the CLI prompts the user to confirm or set a
-budget before a real run, and the runner enforces it as a hard ceiling mid-flight.
+Token assumptions are CALIBRATED against 4,319 real Haiku-4.5 calls (the N=300
+demo run on the 15.5 KB feature-deploy sample): mean 5,546 input / 1,824 output
+tokens per run. The prior estimate assumed 970 output and under-quoted cost ~1.4×
+across the board (worse for the displayed banner). Re-measure if the prompts or
+the two-call pipeline change materially.
+
+A real run is NOT cheap: on the bundled sample, ~$2 for --quick (N=10) and ~$200
+for a full N=1000 pass. That is why the CLI/web both make you set a budget cap
+before a run and enforce it mid-flight.
 """
 
 from dataclasses import dataclass
 from typing import Optional
 
 # Claude Haiku 4.5 pricing, USD per 1M tokens. Single source of truth — keep
-# stats.py / cli.py referencing these rather than hardcoding.
+# stats.py / cli.py / the web tool referencing these rather than hardcoding.
 PRICE_INPUT_PER_MTOK = 1.00
 PRICE_OUTPUT_PER_MTOK = 5.00
 
 CHARS_PER_TOKEN = 4  # rough English heuristic
 
 # Per-run token assumptions (each "run" = one analysis call + one extraction call).
-_ANALYSIS_OVERHEAD_TOKENS = 600    # system + prompt template scaffolding
-_ANALYSIS_OUTPUT_TOKENS = 650
-_EXTRACTION_INPUT_TOKENS = 1300    # analysis output echoed back + extraction prompt
-_EXTRACTION_OUTPUT_TOKENS = 320
-
-# With adaptive stopping, low-variance prompts stop near the floor while high-variance
-# ones run to N. Empirically effective runs land well under the max; use this to show a
-# "typical" figure alongside the worst-case ceiling.
-TYPICAL_FRACTION_OF_MAX = 0.45
+# Measured from 4,319 real calls. Input = workflow text (sent every analysis call)
+# + this overhead (system, prompt scaffolding, the analysis output echoed into the
+# extraction call). Output is the combined analysis + extraction output.
+_INPUT_OVERHEAD_TOKENS = 1700      # non-workflow input per run (measured ~1656)
+_OUTPUT_TOKENS_PER_RUN = 1850      # analysis + extraction output (measured ~1824)
 
 
 def tokens_per_run(workflow_chars: int) -> tuple[int, int]:
     """Estimated (input_tokens, output_tokens) for a single run."""
     workflow_tokens = workflow_chars / CHARS_PER_TOKEN
-    input_tokens = int(workflow_tokens + _ANALYSIS_OVERHEAD_TOKENS + _EXTRACTION_INPUT_TOKENS)
-    output_tokens = _ANALYSIS_OUTPUT_TOKENS + _EXTRACTION_OUTPUT_TOKENS
+    input_tokens = int(workflow_tokens + _INPUT_OVERHEAD_TOKENS)
+    output_tokens = _OUTPUT_TOKENS_PER_RUN
     return input_tokens, output_tokens
 
 
@@ -46,14 +48,13 @@ class CostEstimate:
     runs_per_prompt: int
     workflow_chars: int
     max_runs: int
-    max_cost: float       # if every prompt runs to N (no early stopping)
-    typical_cost: float   # expected with adaptive stopping
+    max_cost: float       # every prompt runs to N (no early stopping)
 
     def summary_line(self) -> str:
         return (f"{self.n_prompts} prompts × up to {self.runs_per_prompt} runs "
                 f"= up to {self.max_runs:,} runs. "
-                f"Est. ${self.typical_cost:.0f} typical, ${self.max_cost:.0f} max "
-                f"(Haiku 4.5).")
+                f"Est. ~${self.max_cost:.0f} (Haiku 4.5); adaptive stopping may lower it. "
+                f"Set a budget cap.")
 
 
 def estimate(n_prompts: int, runs_per_prompt: int, workflow_chars: int) -> CostEstimate:
@@ -67,7 +68,6 @@ def estimate(n_prompts: int, runs_per_prompt: int, workflow_chars: int) -> CostE
         workflow_chars=workflow_chars,
         max_runs=max_runs,
         max_cost=max_cost,
-        typical_cost=max_cost * TYPICAL_FRACTION_OF_MAX,
     )
 
 

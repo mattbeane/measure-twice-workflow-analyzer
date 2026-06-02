@@ -345,7 +345,7 @@ function updateEstimate(){
   $("charCount").textContent = chars.toLocaleString()+" characters";
   const n = parseInt(depthEl.value,10), np = scopedPrompts().length;
   const wfTok = chars/4;
-  const perRunIn = wfTok + 600 + 1300, perRunOut = 650 + 320;
+  const perRunIn = wfTok + 1700, perRunOut = 1850;  // calibrated to 4,319 real Haiku calls (see cost.py)
   const perRun = (perRunIn*PRICE_IN + perRunOut*PRICE_OUT)/1e6;
   const maxRuns = n*np;
   const maxCost = perRun*maxRuns;

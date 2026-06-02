@@ -36,16 +36,13 @@ def test_tokens_per_run_scales_with_workflow_size():
     assert in_big - in_small >= 9_000
 
 
-def test_estimate_returns_sensible_max_and_typical():
+def test_estimate_returns_sensible_max():
     est = cost.estimate(n_prompts=14, runs_per_prompt=1000, workflow_chars=15_000)
     assert est.n_prompts == 14
     assert est.max_runs == 14_000
-    # max_cost is the unbounded ceiling; typical is the adaptive-stopping
-    # expectation. typical < max by construction.
-    assert est.typical_cost < est.max_cost
-    # On a 15K-char workflow, a 1000-run analysis is in the tens of dollars,
-    # not pennies and not thousands.
-    assert 10 < est.max_cost < 500
+    # max_cost is the full-N ceiling, calibrated to real token measurements.
+    # On a 15K-char workflow a 1000-run analysis is ~$200 — not pennies, not thousands.
+    assert 100 < est.max_cost < 400
 
 
 def test_estimate_summary_line_mentions_haiku_4_5_and_dollar_signs():
