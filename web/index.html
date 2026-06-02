@@ -98,18 +98,31 @@
   <!-- STEP 1: KEY -->
   <div class="card">
     <h2><span class="step">1</span> Connect your AI</h2>
-    <label for="apiKey">Anthropic API key</label>
+    <label for="provider">AI provider</label>
+    <select id="provider">
+      <option value="anthropic" selected>Anthropic (Claude)</option>
+      <option value="openai">OpenAI (GPT)</option>
+      <option value="google">Google Gemini</option>
+      <option value="xai">xAI Grok</option>
+    </select>
+    <div class="hint">The tool is calibrated against Claude Haiku 4.5. Other providers ship as <b>experimental</b> — the reliability flag's variance thresholds may be more or less conservative than expected until Phase 2 calibration lands.</div>
+
+    <label for="apiKey" id="apiKeyLabel" style="margin-top:1rem">Anthropic API key</label>
     <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
     <div class="btn-row">
       <button class="btn-ghost" id="saveKey">Save key in this browser</button>
       <button class="btn-ghost" id="clearKey">Forget key</button>
       <span class="hint" id="keyStatus"></span>
     </div>
+    <div id="experimentalNotice" class="privacy" style="border-left-color:var(--amber);background:rgba(217,138,0,.08);display:none">
+      <b>Experimental provider.</b>
+      <span id="experimentalNoticeText"></span>
+    </div>
     <div class="privacy">
-      <b>Your key and your data never leave your machine.</b> This page calls Anthropic directly from your browser.
+      <b>Your key and your data never leave your machine.</b> This page calls your selected provider's API directly from your browser.
       Nothing is sent to us — there's no server, no account, no tracking. Your key is stored only in this browser
       (you can forget it anytime). Need a key? Create one at
-      <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys.
+      <a id="consoleLink" href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> <span id="consoleLinkSuffix">→ API Keys</span>.
     </div>
   </div>
 
@@ -206,15 +219,158 @@
 "use strict";
 
 // ---- config ----------------------------------------------------------------
-const MODEL = "claude-haiku-4-5";            // matches the CLI; change here if your account needs a dated id
-const PRICE_IN = 1.0, PRICE_OUT = 5.0;       // Haiku 4.5 USD / 1M tokens
 const CONCURRENCY = 5;                        // parallel API calls
-const API_URL = "https://api.anthropic.com/v1/messages";
 const ADAPTIVE_FRACTION = 0.5;               // typical fraction of max runs actually used (adaptive stopping)
 // Adaptive stopping (mirrors the CLI): once a prompt has >= MIN_RUNS results and its
 // key metrics agree tightly (coefficient of variation <= STOP_CV), stop sampling it.
 const ADAPT_MIN_RUNS = 12;                   // never stop before this many (keeps the CLT floor intact)
 const ADAPT_STOP_CV = 12;                    // percent; below this, the metric is settled
+
+// ---- provider adapters -----------------------------------------------------
+// Each adapter is a self-contained recipe for talking to one provider's chat
+// API from the browser. The rest of the app (cost banner, adaptive stopping,
+// dashboard, downloads) is provider-agnostic and uses `currentAdapter()`.
+//
+// Token-overhead and output-token constants are inherited from Matt's Anthropic
+// recalibration (commit 6e3e247). Other providers reuse the same constants as
+// a first approximation; Phase 2 calibration ($50-100 funded) will measure
+// per-provider profiles and replace these with honest numbers.
+//
+// Defaults are non-thinking by design: the tool's whole demo is run-to-run
+// variance → the reliability flag. Thinking/reasoning models are more
+// self-consistent, which flattens the spread the flag exists to surface. xAI
+// is the forced exception — its non-reasoning variant returns truncated junk
+// on analysis prompts, so we use the reasoning variant and flag it as the
+// most experimental of the four.
+const PROVIDERS = {
+  anthropic: {
+    id: "anthropic",
+    label: "Anthropic (Claude)",
+    model: "claude-haiku-4-5",
+    keyPlaceholder: "sk-ant-...",
+    consoleUrl: "https://console.anthropic.com",
+    consoleHint: "console.anthropic.com → API Keys",
+    apiUrl: () => "https://api.anthropic.com/v1/messages",
+    pricing: { in: 1.0, out: 5.0 },              // USD per Mtok
+    perRunInOverhead: 1700, perRunOut: 1850,     // calibrated to 4,319 real Haiku calls
+    experimental: false, disclaimer: null,
+    auth: (key) => ({
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    }),
+    buildBody: ({ model, system, userText, temperature, maxTokens }) => {
+      const body = { model, max_tokens: maxTokens, temperature, messages: [{ role: "user", content: userText }] };
+      if (system) body.system = system;
+      return body;
+    },
+    parseResponse: (d) => ({
+      text:   d.content.map(c => c.text || "").join(""),
+      inTok:  d.usage.input_tokens,
+      outTok: d.usage.output_tokens,
+    }),
+    is401: (status) => status === 401,
+  },
+  openai: {
+    id: "openai",
+    label: "OpenAI (GPT)",
+    model: "gpt-4o-mini",
+    keyPlaceholder: "sk-... (not sk-ant-)",
+    consoleUrl: "https://platform.openai.com/api-keys",
+    consoleHint: "platform.openai.com → API keys",
+    apiUrl: () => "https://api.openai.com/v1/chat/completions",
+    pricing: { in: 0.15, out: 0.60 },
+    perRunInOverhead: 1700, perRunOut: 1850,
+    experimental: true,
+    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough.",
+    auth: (key) => ({ "Authorization": "Bearer " + key }),
+    buildBody: ({ model, system, userText, temperature, maxTokens }) => {
+      const messages = [];
+      if (system) messages.push({ role: "system", content: system });
+      messages.push({ role: "user", content: userText });
+      return { model, max_tokens: maxTokens, temperature, messages };
+    },
+    parseResponse: (d) => ({
+      text:   d.choices?.[0]?.message?.content || "",
+      inTok:  d.usage?.prompt_tokens || 0,
+      outTok: d.usage?.completion_tokens || 0,
+    }),
+    is401: (status) => status === 401,
+  },
+  google: {
+    id: "google",
+    label: "Google Gemini",
+    model: "gemini-2.5-flash",
+    keyPlaceholder: "AIza...",
+    consoleUrl: "https://aistudio.google.com/apikey",
+    consoleHint: "aistudio.google.com → Get API key",
+    apiUrl: ({ model, apiKey }) =>
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    pricing: { in: 0.30, out: 2.50 },
+    perRunInOverhead: 1700, perRunOut: 1850,
+    experimental: true,
+    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough.",
+    auth: () => ({}),                            // key is in the URL query param, not a header
+    buildBody: ({ system, userText, temperature, maxTokens }) => ({
+      // thinkingBudget: 0 disables Gemini 2.5's reasoning preamble. The tool's
+      // whole demo is variance → reliability flag; reasoning flattens that.
+      ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
+      contents: [{ parts: [{ text: userText }] }],
+      generationConfig: {
+        maxOutputTokens: maxTokens, temperature,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    }),
+    parseResponse: (d) => {
+      const cand = d.candidates?.[0];
+      const text = (cand?.content?.parts || []).map(p => p.text || "").join("");
+      const usage = d.usageMetadata || {};
+      return {
+        text,
+        inTok:  usage.promptTokenCount || 0,
+        outTok: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0),
+      };
+    },
+    is401: (status) => status === 401 || status === 403,
+  },
+  xai: {
+    id: "xai",
+    label: "xAI Grok",
+    model: "grok-4.20-0309-reasoning",           // forced reasoning per Phase 0 — non-reasoning returns truncated junk
+    keyPlaceholder: "xai-...",
+    consoleUrl: "https://console.x.ai",
+    consoleHint: "console.x.ai → API keys",
+    apiUrl: () => "https://api.x.ai/v1/chat/completions",
+    pricing: { in: 12.50, out: 25.00 },
+    perRunInOverhead: 1700, perRunOut: 1850,
+    experimental: true,
+    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough. Also: xAI requires credits to be purchased in the console before any call works, and Grok is the most expensive of the four (8-12x Claude per token).",
+    auth: (key) => ({ "Authorization": "Bearer " + key }),
+    buildBody: ({ model, system, userText, temperature, maxTokens }) => {
+      const messages = [];
+      if (system) messages.push({ role: "system", content: system });
+      messages.push({ role: "user", content: userText });
+      return { model, max_tokens: maxTokens, temperature, messages };
+    },
+    parseResponse: (d) => ({
+      text:   d.choices?.[0]?.message?.content || "",
+      inTok:  d.usage?.prompt_tokens || 0,
+      outTok: d.usage?.completion_tokens || 0,
+    }),
+    is401: (status) => status === 401,
+  },
+};
+
+const DEFAULT_PROVIDER_ID = "anthropic";
+let activeProviderId = DEFAULT_PROVIDER_ID;
+const currentAdapter = () => PROVIDERS[activeProviderId];
+const LEGACY_KEY_STORAGE = "mtso_key";       // pre-multi-provider single-key store
+const providerKeyStorageId = (pid) => `mtso_key_${pid}`;
+// Stash for unit testing — exposes internals on `window` so headless Playwright
+// can exercise adapter pure-functions without touching the network.
+if (typeof window !== "undefined") {
+  window.MTSO_INTERNALS = { PROVIDERS, currentAdapter, providerKeyStorageId, LEGACY_KEY_STORAGE };
+}
 
 const SYSTEM_MESSAGE = `You are a workflow analyst providing quantitative metrics.
 Rules:
@@ -323,14 +479,68 @@ const SAMPLE_URLS = {
 // ---- DOM -------------------------------------------------------------------
 const $ = id => document.getElementById(id);
 const keyEl=$("apiKey"), wfEl=$("workflow"), depthEl=$("depth"), scopeEl=$("scope"), budgetEl=$("budget");
+const providerEl=$("provider"), keyLabelEl=$("apiKeyLabel"), consoleLinkEl=$("consoleLink");
+const consoleLinkSuffixEl=$("consoleLinkSuffix"), experimentalEl=$("experimentalNotice"), experimentalTextEl=$("experimentalNoticeText");
 let lastCorpus = null;
 
-// key persistence
-const SAVED = localStorage.getItem("mtso_key");
-if(SAVED){ keyEl.value = SAVED; setKeyStatus("loaded from this browser"); }
 function setKeyStatus(t){ $("keyStatus").textContent = t; }
-$("saveKey").onclick = ()=>{ if(keyEl.value.trim()){ localStorage.setItem("mtso_key",keyEl.value.trim()); setKeyStatus("saved in this browser"); } };
-$("clearKey").onclick = ()=>{ localStorage.removeItem("mtso_key"); keyEl.value=""; setKeyStatus("forgotten"); };
+
+// One-time migration: pre-multi-provider single-key storage → Anthropic-specific key.
+// Without this, anyone who saved a key in the previous version of the page would
+// silently see "no key" after the upgrade. Migrate once on first load, then delete
+// the legacy entry so we don't keep migrating it.
+(function migrateLegacyKey(){
+  const legacy = localStorage.getItem(LEGACY_KEY_STORAGE);
+  if (!legacy) return;
+  const anthropicSlot = providerKeyStorageId("anthropic");
+  if (!localStorage.getItem(anthropicSlot)) {
+    localStorage.setItem(anthropicSlot, legacy);
+  }
+  localStorage.removeItem(LEGACY_KEY_STORAGE);
+})();
+
+// Render the UI bits that depend on which provider is selected: key label,
+// input placeholder, console link, and the experimental disclaimer. Also
+// loads the saved key for the active provider, if any.
+function renderActiveProvider(){
+  const adapter = currentAdapter();
+  keyLabelEl.textContent = `${adapter.label.replace(/\s+\(.*\)$/, "")} API key`;
+  keyEl.placeholder = adapter.keyPlaceholder;
+  consoleLinkEl.href = adapter.consoleUrl;
+  consoleLinkEl.textContent = adapter.consoleUrl.replace(/^https?:\/\//, "");
+  consoleLinkSuffixEl.textContent = ` → ${adapter.consoleHint.split("→").slice(1).join("→").trim() || "API Keys"}`;
+  if (adapter.experimental && adapter.disclaimer) {
+    experimentalTextEl.textContent = " " + adapter.disclaimer;
+    experimentalEl.style.display = "block";
+  } else {
+    experimentalEl.style.display = "none";
+  }
+  // Load saved key for this provider (does not auto-save when switching).
+  const saved = localStorage.getItem(providerKeyStorageId(adapter.id));
+  keyEl.value = saved || "";
+  setKeyStatus(saved ? "loaded from this browser" : "");
+  updateEstimate();
+}
+
+providerEl.addEventListener("change", () => {
+  activeProviderId = providerEl.value;
+  renderActiveProvider();
+});
+
+$("saveKey").onclick = () => {
+  const v = keyEl.value.trim();
+  if (!v) { setKeyStatus("nothing to save — paste a key first"); return; }
+  localStorage.setItem(providerKeyStorageId(activeProviderId), v);
+  setKeyStatus(`saved for ${currentAdapter().label} in this browser`);
+};
+$("clearKey").onclick = () => {
+  localStorage.removeItem(providerKeyStorageId(activeProviderId));
+  keyEl.value = "";
+  setKeyStatus(`forgotten for ${currentAdapter().label}`);
+};
+
+// Initial render: align the UI with the default provider + load its saved key.
+renderActiveProvider();
 
 // char count + estimate
 wfEl.addEventListener("input", updateEstimate);
@@ -341,23 +551,28 @@ function scopedPrompts(){
   return PROMPTS.filter(p=> s==="all" ? true : p.category===s);
 }
 function updateEstimate(){
+  const adapter = currentAdapter();
   const chars = wfEl.value.length;
   $("charCount").textContent = chars.toLocaleString()+" characters";
   const n = parseInt(depthEl.value,10), np = scopedPrompts().length;
   const wfTok = chars/4;
-  const perRunIn = wfTok + 1700, perRunOut = 1850;  // calibrated to 4,319 real Haiku calls (see cost.py)
-  const perRun = (perRunIn*PRICE_IN + perRunOut*PRICE_OUT)/1e6;
+  const perRunIn = wfTok + adapter.perRunInOverhead;
+  const perRunOut = adapter.perRunOut;
+  const perRun = (perRunIn*adapter.pricing.in + perRunOut*adapter.pricing.out)/1e6;
   const maxRuns = n*np;
   const maxCost = perRun*maxRuns;
   // Adaptive stopping typically ends well before max; show an honest range.
   const typicalCost = maxCost*ADAPTIVE_FRACTION;
-  // Time: a brand-new Anthropic account has low rate limits, so calls throttle.
+  // Time: a brand-new account has low rate limits, so calls throttle.
   const minMin = Math.max(1, Math.round(maxRuns*2/CONCURRENCY*1.4/60));
+  const providerNote = adapter.experimental
+    ? ` <span style="color:#d98a00">Estimate basis is calibrated for Claude — actual cost on ${adapter.label} may differ.</span>`
+    : "";
   $("estimate").innerHTML =
     `<b>${np} analyses × up to ${n} runs.</b> `+
     `Estimated cost: <b>$${typicalCost.toFixed(2)}–$${maxCost.toFixed(2)}</b> ` +
     `(you'll be charged for what actually runs; a hard budget cap protects you). `+
-    `Time: <b>~${minMin}+ min</b> — longer on a brand-new API account, which starts with low rate limits.`;
+    `Time: <b>~${minMin}+ min</b> — longer on a brand-new API account, which starts with low rate limits.${providerNote}`;
 }
 
 // samples
@@ -374,31 +589,43 @@ document.querySelectorAll("[data-sample]").forEach(b=>{
   };
 });
 
-// ---- Anthropic call --------------------------------------------------------
-async function callClaude(apiKey, system, userText, temperature, maxTokens){
-  const body = { model:MODEL, max_tokens:maxTokens, temperature, messages:[{role:"user",content:userText}] };
-  if(system) body.system = system;
+// ---- Provider call ---------------------------------------------------------
+// Generic browser-direct call dispatched through the active adapter. The
+// surface here matches the old `callClaude` signature so the existing
+// `oneRun` / pump loop doesn't need to know which provider is active.
+async function callProvider(apiKey, system, userText, temperature, maxTokens){
+  const adapter = currentAdapter();
+  const model = adapter.model;
+  const url = adapter.apiUrl({ model, apiKey });
+  const headers = {
+    "content-type": "application/json",
+    ...adapter.auth(apiKey),
+  };
+  const body = adapter.buildBody({ model, system, userText, temperature, maxTokens });
+
   for(let attempt=0; attempt<3; attempt++){
     let res;
     try{
-      res = await fetch(API_URL,{ method:"POST",
-        headers:{ "content-type":"application/json","x-api-key":apiKey,
-          "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify(body) });
+      res = await fetch(url, { method:"POST", headers, body: JSON.stringify(body) });
     }catch(netErr){ throw new Error("Network error — check your connection. ("+netErr.message+")"); }
     if(res.ok){
-      const d=await res.json();
-      return { text:d.content.map(c=>c.text||"").join(""), inTok:d.usage.input_tokens, outTok:d.usage.output_tokens };
+      const d = await res.json();
+      return adapter.parseResponse(d);
     }
     if(res.status===429 || res.status===529 || res.status===503){
       await new Promise(r=>setTimeout(r, 1200*(attempt+1))); continue;   // backoff + retry
     }
     const t = await res.text();
-    if(res.status===401) throw new Error("Invalid API key (401). Check the key and try again.");
+    if(adapter.is401(res.status)){
+      const providerName = adapter.label;
+      throw new Error(`Invalid API key (${res.status}) for ${providerName}. Check the key and try again.`);
+    }
     throw new Error("API error "+res.status+": "+t.slice(0,160));
   }
   throw new Error("Rate-limited repeatedly — try a lower 'runs per analysis' or wait a minute.");
 }
+// Backwards-compat alias for any code path that still references the old name.
+const callClaude = callProvider;
 
 // flatten numeric metrics (mirror of the CLI stats logic)
 function flattenNumeric(obj, prefix, out){
@@ -451,7 +678,8 @@ async function run(){
     const a=await callClaude(apiKey, SYSTEM_MESSAGE, p.template.replace("{workflow_data}",wf), 0.7, 4096);
     const exUser=`Here is a workflow analysis output:\n\n${a.text}\n\n${p.extraction}\n\nAlso include a "_confidence" field ("high"/"medium"/"low").`;
     const e=await callClaude(apiKey, null, exUser, 0, 2048);
-    spent += ((a.inTok+e.inTok)*PRICE_IN + (a.outTok+e.outTok)*PRICE_OUT)/1e6;
+    const pricing = currentAdapter().pricing;
+    spent += ((a.inTok+e.inTok)*pricing.in + (a.outTok+e.outTok)*pricing.out)/1e6;
     let metrics=null; try{ metrics=parseJsonLoose(e.text); }catch(_){ /* extraction parse miss */ }
     return metrics;
   }
