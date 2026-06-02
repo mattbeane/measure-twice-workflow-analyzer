@@ -98,7 +98,7 @@ def configure(
 @app.command()
 def analyze(
     workflow_file: Path = typer.Argument(..., help="Path to workflow data file", exists=True),
-    runs: Optional[int] = typer.Option(None, "--runs", "-r", help="Runs per prompt (default: from config, 1000)"),
+    runs: Optional[int] = typer.Option(None, "--runs", "-r", help="Runs per prompt (default: from config, 200; use 1000 for survey-grade)"),
     quick: bool = typer.Option(False, "--quick", help=f"Fast demo run ({QUICK_RUNS} runs/prompt)"),
     budget: Optional[float] = typer.Option(None, "--budget", help="Hard spend ceiling in USD"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the cost confirmation prompt"),

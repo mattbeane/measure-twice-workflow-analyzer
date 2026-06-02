@@ -18,7 +18,7 @@ from workflow_analyzer import config
 
 def test_load_config_missing_file_returns_defaults(isolated_config_dir):
     cfg = config.load_config(isolated_config_dir)
-    assert cfg["default_runs"] == 1000
+    assert cfg["default_runs"] == 200
     assert cfg["default_budget_usd"] == 50.0
     assert cfg["model"] == "claude-haiku-4-5"
 

@@ -18,7 +18,7 @@ from . import config as user_config
 class RunConfig:
     """Configuration for an analysis run."""
     workflow_data: str
-    runs_per_prompt: int = 1000  # Statistically defensible by default; adaptive stopping trims it
+    runs_per_prompt: int = 200  # "useful" default (~$40 on the sample, completes under the $50 cap); bump to 1000 for survey-grade
     model: str = "claude-haiku-4-5"  # Fast and cheap for bulk runs
     extraction_model: str = "claude-haiku-4-5"
     max_concurrent: int = 20  # How many API calls to run in parallel

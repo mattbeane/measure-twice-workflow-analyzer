@@ -19,7 +19,7 @@ CONFIG_PATH = CONFIG_DIR / "config.toml"
 
 # Defaults shipped with the tool. Overridable in the config file.
 DEFAULTS = {
-    "default_runs": 1000,
+    "default_runs": 200,
     "default_budget_usd": 50.0,
     "model": "claude-haiku-4-5",
 }

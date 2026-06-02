@@ -11,7 +11,7 @@ This gets you from zero to a real analysis. If anything trips you up, see [troub
 3. Left menu → **API Keys** → **Create Key**.
 4. Copy it. It starts with `sk-ant-`. Keep it somewhere safe — you'll paste it once in step 3.
 
-> An API key is like a credit card for AI usage. This tool uses Haiku, the cheapest model. **Real costs (measured on the bundled ~15 KB sample):** a `--quick` smoke test (10 runs/prompt) runs about **$2** and takes **a few minutes** — longer on a brand-new account, which starts with low rate limits. A full default run (1,000 runs/prompt) is roughly **$200** — a real, defensible analysis is not cheap. Bigger inputs cost more, because your workflow text is sent on every call. **That's why you set a spending cap before every run (default $50) — the tool hard-stops there.**
+> An API key is like a credit card for AI usage. This tool uses Haiku, the cheapest model. **Real costs (measured on the bundled ~15 KB sample):** a `--quick` smoke test (10 runs/prompt) runs about **$2** and takes **a few minutes** — longer on a brand-new account, which starts with low rate limits. The default run (200 runs/prompt) is roughly **$40** and finishes inside the default cap; a deep 1,000-run pass for survey-grade confidence is ~**$200**. Bigger inputs cost more, because your workflow text is sent on every call. **You set a spending cap before every run (default $50) — the tool hard-stops there.**
 
 ---
 
@@ -69,7 +69,7 @@ mtso analyze examples/feature-deploy/workflow.txt --quick
    ```bash
    mtso analyze my-workflow.txt
    ```
-   It'll show a cost estimate and ask you to set a budget (default $50). A full 1,000-run analysis is roughly **$200** on a sample-sized input (more for larger inputs) — so the budget cap matters: it hard-stops the run when hit. Raise it if you want the full depth; leave it for a capped partial.
+   It'll show a cost estimate and ask you to set a budget (default $50). The default 200-run analysis is ~**$40** on a sample-sized input and completes within that cap; a deep 1,000-run pass (`--runs 1000`) is ~**$200**, so raise the cap for that or it hard-stops partway. Larger inputs cost proportionally more.
 
 3. **Open `my-workflow-analysis/corpus.csv`.** That's your calibrated picture. The high-reliability rows are trustworthy. The low-reliability rows are questions to dig into.
 
