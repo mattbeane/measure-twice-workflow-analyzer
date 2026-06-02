@@ -19,7 +19,7 @@ jobs:
   test:
     name: pytest
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10        # Playwright install adds ~30s; web tests add ~13s. Keeps headroom.
 
     steps:
       - name: Checkout
@@ -32,6 +32,12 @@ jobs:
 
       - name: Install dev dependencies
         run: uv sync --group dev
+
+      - name: Install Playwright Chromium
+        # Required for the web-tool tests under tests/web/ (which use
+        # pytest-playwright). The browser binary isn't pulled in by the
+        # Python wheel — we have to invoke playwright explicitly.
+        run: uv run playwright install --with-deps chromium
 
       - name: Run pytest with coverage
         run: uv run pytest --cov=workflow_analyzer --cov-report=term
