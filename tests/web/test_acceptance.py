@@ -6,14 +6,15 @@ Each test pins a specific item from his 2026-06-02 email reply
 from __future__ import annotations
 
 
-def test_acceptance_four_providers_present(page):
-    """Spec: Tier 1 = Anthropic / OpenAI / Google / xAI."""
+def test_acceptance_three_providers_present(page):
+    """Spec: Tier 1 = Anthropic / OpenAI / Google. (xAI removed — footgun:
+    forced-reasoning mutes the variance signal + ~11x cost + credit-gate.)"""
     options = page.locator("#provider option").all_inner_texts()
     text = " ".join(options)
     assert "Anthropic" in text
     assert "OpenAI" in text
     assert "Google" in text and "Gemini" in text
-    assert "xAI" in text or "Grok" in text
+    assert "xAI" not in text and "Grok" not in text
 
 
 def test_acceptance_anthropic_default_haiku_4_5_non_thinking(page):
@@ -49,26 +50,16 @@ def test_acceptance_google_default_2_5_flash_thinking_disabled(page):
     assert body["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0
 
 
-def test_acceptance_xai_forced_reasoning_variant(page):
-    """Spec: xAI — reasoning variant is the forced exception, since
-    non-reasoning returns truncated junk."""
-    model = page.evaluate("() => window.MTSO_INTERNALS.PROVIDERS.xai.model")
-    assert "reasoning" in model
-    assert "non-reasoning" not in model
-
-
 def test_acceptance_non_anthropic_marked_experimental(page):
     """Spec: non-Anthropic ships 'experimental,' not equal-footing."""
     flags = page.evaluate("""() => ({
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.experimental,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.experimental,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.experimental,
-        xai:       window.MTSO_INTERNALS.PROVIDERS.xai.experimental,
     })""")
     assert flags["anthropic"] is False
     assert flags["openai"] is True
     assert flags["google"] is True
-    assert flags["xai"] is True
 
 
 def test_acceptance_disclaimer_uses_matt_short_wording(page):
@@ -83,12 +74,6 @@ def test_acceptance_disclaimer_uses_matt_short_wording(page):
     # No CV% homework:
     assert "CV%" not in disclaimer
     assert "coefficient" not in disclaimer.lower()
-
-
-def test_acceptance_xai_disclaimer_includes_credit_note(page):
-    """Spec: xAI gets the extra credit-required note."""
-    disclaimer = page.evaluate("() => window.MTSO_INTERNALS.PROVIDERS.xai.disclaimer")
-    assert "credit" in disclaimer.lower()
 
 
 def test_acceptance_browser_only_no_cli_changes(page):

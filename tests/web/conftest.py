@@ -110,11 +110,6 @@ def page_with_mocked_fetch(context, web_server):
                     return { candidates: [{ content: { parts: [{ text: '{"x":1}' }] } }],
                              usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20 } };
                 }
-                if (u.includes("api.x.ai")) {
-                    return { choices: [{ message: { content: '{"x":1}' } }],
-                             usage: { prompt_tokens: 100, completion_tokens: 20 },
-                             model: "grok-4.20-0309-reasoning" };
-                }
                 return { _unknown: true };
             })();
             return Promise.resolve(new Response(JSON.stringify(fake), {
