@@ -37,9 +37,9 @@ If your security team asks "where does the data go," the answer is: **from the e
 
 ---
 
-## Browser tool: experimental disclaimer for non-Anthropic providers
+## Browser tool: the reliability flag is calibrated on Claude
 
-The browser tool's reliability flag (high / moderate / low) is empirically calibrated against Claude Haiku 4.5's variance profile. When a participant selects OpenAI or Google, the page surfaces an **"Experimental"** notice — those providers' reliability flags may be more or less conservative than expected until per-provider recalibration ships. The dollar estimate is likewise calibrated on Haiku's token profile; actual cost varies with each provider's own pricing and token usage, so treat the estimate as a starting point and confirm against the provider's billing.
+The browser tool's reliability flag (high / moderate / low) is empirically calibrated against Claude Haiku 4.5's variance profile. OpenAI and Google are first-class providers in the selector; they use the same variance thresholds as a first approximation, and per-provider recalibration (so the flag means exactly the same thing on each) is Phase 2 work. The dollar estimate is likewise calibrated on Haiku's token profile; actual cost varies with each provider's own pricing and token usage, so treat the estimate as a starting point and confirm against the provider's billing.
 
 (xAI/Grok was offered briefly and then removed: its only usable mode is forced-reasoning, which both mutes the run-to-run variance the reliability flag depends on and costs roughly 11× Haiku per run — wrong fit for this tool.)
 

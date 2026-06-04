@@ -50,30 +50,17 @@ def test_acceptance_google_default_2_5_flash_thinking_disabled(page):
     assert body["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0
 
 
-def test_acceptance_non_anthropic_marked_experimental(page):
-    """Spec: non-Anthropic ships 'experimental,' not equal-footing."""
+def test_acceptance_no_provider_marked_experimental(page):
+    """Updated: OpenAI/Google are now first-class (experimental dropped per
+    Matt's call); xAI is removed. No provider carries the experimental flag."""
     flags = page.evaluate("""() => ({
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.experimental,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.experimental,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.experimental,
     })""")
     assert flags["anthropic"] is False
-    assert flags["openai"] is True
-    assert flags["google"] is True
-
-
-def test_acceptance_disclaimer_uses_matt_short_wording(page):
-    """Spec: Disclaimer drops the CV% homework, uses the short experimental
-    wording."""
-    disclaimer = page.evaluate("() => window.MTSO_INTERNALS.PROVIDERS.openai.disclaimer")
-    # Matt's exact replacement framing:
-    #   "Experimental — calibrated for Claude; treat other providers'
-    #    reliability flags as rough."
-    assert "Experimental" in disclaimer
-    assert "calibrated for Claude" in disclaimer
-    # No CV% homework:
-    assert "CV%" not in disclaimer
-    assert "coefficient" not in disclaimer.lower()
+    assert flags["openai"] is False
+    assert flags["google"] is False
 
 
 def test_acceptance_browser_only_no_cli_changes(page):

@@ -120,7 +120,7 @@
       <option value="openai">OpenAI (GPT)</option>
       <option value="google">Google Gemini</option>
     </select>
-    <div class="hint">The tool is calibrated against Claude Haiku 4.5. Other providers ship as <b>experimental</b> — the reliability flag's variance thresholds may be more or less conservative than expected until Phase 2 calibration lands.</div>
+    <div class="hint">The tool is calibrated against Claude Haiku 4.5. OpenAI and Google use the same reliability thresholds as a first approximation; per-provider calibration is Phase 2.</div>
 
     <label for="apiKey" id="apiKeyLabel" style="margin-top:1rem">Anthropic API key</label>
     <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
@@ -296,8 +296,7 @@ const PROVIDERS = {
     apiUrl: () => "https://api.openai.com/v1/chat/completions",
     pricing: { in: 0.15, out: 0.60 },
     perRunInOverhead: 1700, perRunOut: 1850,
-    experimental: true,
-    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough.",
+    experimental: false, disclaimer: null,
     auth: (key) => ({ "Authorization": "Bearer " + key }),
     buildBody: ({ model, system, userText, temperature, maxTokens }) => {
       const messages = [];
@@ -323,8 +322,7 @@ const PROVIDERS = {
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     pricing: { in: 0.30, out: 2.50 },
     perRunInOverhead: 1700, perRunOut: 1850,
-    experimental: true,
-    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough.",
+    experimental: false, disclaimer: null,
     auth: () => ({}),                            // key is in the URL query param, not a header
     buildBody: ({ system, userText, temperature, maxTokens }) => ({
       // thinkingBudget: 0 disables Gemini 2.5's reasoning preamble. The tool's

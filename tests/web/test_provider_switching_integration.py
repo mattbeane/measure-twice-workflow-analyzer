@@ -34,18 +34,12 @@ def test_anthropic_does_not_show_experimental_disclaimer(page):
     assert page.locator("#experimentalNotice").is_hidden()
 
 
-def test_switching_to_openai_shows_experimental_disclaimer(page):
-    page.locator("#provider").select_option("openai")
-    assert page.locator("#experimentalNotice").is_visible()
-    text = page.locator("#experimentalNoticeText").inner_text()
-    assert "Experimental" in text or "experimental" in text
-
-
-def test_switching_back_to_anthropic_hides_disclaimer(page):
-    page.locator("#provider").select_option("openai")
-    assert page.locator("#experimentalNotice").is_visible()
-    page.locator("#provider").select_option("anthropic")
-    assert page.locator("#experimentalNotice").is_hidden()
+def test_experimental_notice_stays_hidden_for_every_provider(page):
+    """Experimental dropped for OpenAI/Google (Matt's call) and xAI removed,
+    so the amber notice never shows for any provider now."""
+    for p in ("openai", "google", "anthropic"):
+        page.locator("#provider").select_option(p)
+        assert page.locator("#experimentalNotice").is_hidden()
 
 
 def test_provider_change_clears_key_field(page):
@@ -74,12 +68,3 @@ def test_cost_estimate_reflects_active_provider_pricing(page):
     # We don't assert exact values — just that they differ. Per-provider
     # banner = working integration.
     assert anthropic_est != openai_est
-
-
-def test_cost_estimate_shows_calibrated_disclaimer_for_experimental(page):
-    """Non-Anthropic estimate should mention that the basis is calibrated
-    for Claude — honest about the uncertainty."""
-    page.locator("#workflow").fill("x " * 5000)
-    page.locator("#provider").select_option("openai")
-    txt = page.locator("#estimate").inner_text()
-    assert "Claude" in txt or "calibrated" in txt.lower()

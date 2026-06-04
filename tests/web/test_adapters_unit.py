@@ -57,16 +57,17 @@ def test_default_models_match_matt_spec(page):
     assert models["google"]    == "gemini-2.5-flash"
 
 
-def test_anthropic_is_not_experimental_others_are(page):
-    """Matt's Condition 2: non-Anthropic ships as experimental."""
+def test_no_provider_is_experimental(page):
+    """Updated: experimental dropped for OpenAI/Google (Matt's call), xAI
+    removed. Every provider now ships first-class."""
     e = page.evaluate("""() => ({
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.experimental,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.experimental,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.experimental,
     })""")
     assert e["anthropic"] is False
-    assert e["openai"] is True
-    assert e["google"] is True
+    assert e["openai"] is False
+    assert e["google"] is False
 
 
 def test_anthropic_auth_header_includes_browser_access_flag(page):
