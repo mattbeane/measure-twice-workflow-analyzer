@@ -42,7 +42,7 @@ def test_provider_switching_is_instant(page):
     """Each provider-change handler should complete in well under one frame
     (16ms). It's pure DOM updates + a localStorage read."""
     durations: list[float] = []
-    for target in ("openai", "google", "xai", "anthropic"):
+    for target in ("openai", "google", "anthropic"):
         t0 = time.monotonic()
         page.locator("#provider").select_option(target)
         # Settled when the active provider's key field has been reflected.
@@ -62,7 +62,7 @@ def test_repeated_switching_does_not_leak_localstorage(page):
     """Switching back and forth N times should leave only the expected
     namespaced keys behind — no orphan entries, no accidental writes."""
     for _ in range(10):
-        for target in ("openai", "google", "xai", "anthropic"):
+        for target in ("openai", "google", "anthropic"):
             page.locator("#provider").select_option(target)
     keys = page.evaluate("() => Object.keys(localStorage)")
     # We didn't save any keys — so localStorage should still be empty.

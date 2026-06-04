@@ -66,17 +66,6 @@ def test_google_run_hits_gemini_endpoint_with_key_in_query(page_with_mocked_fetc
     assert "AIza-google-test" in google_calls[0]["url"]
 
 
-def test_xai_run_hits_xai_endpoint_with_reasoning_model(page_with_mocked_fetch):
-    page, _ = page_with_mocked_fetch
-    _run_workflow(page, "xai", "xai-test-e2e")
-    page.wait_for_function("() => window._mtsoIntercepted.length > 0", timeout=15_000)
-    calls = _intercepted_calls(page)
-    assert calls
-    assert any("api.x.ai" in c["url"] for c in calls)
-    body = json.loads(calls[0]["body"])
-    assert "reasoning" in body["model"]
-
-
 def test_provider_switching_mid_session_changes_endpoint(page_with_mocked_fetch):
     """Switch from Anthropic to OpenAI mid-journey: the next Run hits OpenAI.
 

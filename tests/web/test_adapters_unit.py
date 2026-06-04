@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 
-PROVIDERS = ["anthropic", "openai", "google", "xai"]
+PROVIDERS = ["anthropic", "openai", "google"]
 
 
 def test_all_four_providers_present(page):
@@ -51,13 +51,10 @@ def test_default_models_match_matt_spec(page):
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.model,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.model,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.model,
-        xai:       window.MTSO_INTERNALS.PROVIDERS.xai.model,
     })""")
     assert models["anthropic"] == "claude-haiku-4-5"
     assert models["openai"]    == "gpt-4o-mini"
     assert models["google"]    == "gemini-2.5-flash"
-    # xAI forced reasoning per Phase 0 — non-reasoning returns truncated junk.
-    assert "reasoning" in models["xai"]
 
 
 def test_anthropic_is_not_experimental_others_are(page):
@@ -66,19 +63,10 @@ def test_anthropic_is_not_experimental_others_are(page):
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.experimental,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.experimental,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.experimental,
-        xai:       window.MTSO_INTERNALS.PROVIDERS.xai.experimental,
     })""")
     assert e["anthropic"] is False
     assert e["openai"] is True
     assert e["google"] is True
-    assert e["xai"] is True
-
-
-def test_xai_disclaimer_mentions_credit_requirement(page):
-    """xAI gets the extra credit-required note (Phase 0 finding: fresh teams
-    can't make API calls until credits are funded)."""
-    d = page.evaluate("() => window.MTSO_INTERNALS.PROVIDERS.xai.disclaimer")
-    assert "credit" in d.lower() or "credits" in d.lower()
 
 
 def test_anthropic_auth_header_includes_browser_access_flag(page):
@@ -115,13 +103,6 @@ def test_google_api_url_includes_key_param(page):
     assert "gemini-2.5-flash" in url
     assert "AIza-secret" in url
     assert "key=" in url
-
-
-def test_xai_uses_bearer_authorization(page):
-    headers = page.evaluate("""() =>
-        window.MTSO_INTERNALS.PROVIDERS.xai.auth("xai-test")
-    """)
-    assert headers["Authorization"] == "Bearer xai-test"
 
 
 def test_anthropic_build_body_uses_messages_shape(page):
@@ -220,12 +201,10 @@ def test_pricing_per_provider_matches_published_rates(page):
         anthropic: window.MTSO_INTERNALS.PROVIDERS.anthropic.pricing,
         openai:    window.MTSO_INTERNALS.PROVIDERS.openai.pricing,
         google:    window.MTSO_INTERNALS.PROVIDERS.google.pricing,
-        xai:       window.MTSO_INTERNALS.PROVIDERS.xai.pricing,
     })""")
     assert pricing["anthropic"] == {"in": 1.0,   "out": 5.0}
     assert pricing["openai"]    == {"in": 0.15,  "out": 0.60}
     assert pricing["google"]    == {"in": 0.30,  "out": 2.50}
-    assert pricing["xai"]       == {"in": 12.50, "out": 25.00}
 
 
 def test_token_overhead_basis_matches_matt_recalibration(page):
@@ -239,7 +218,7 @@ def test_token_overhead_basis_matches_matt_recalibration(page):
     )""")
     assert bases["anthropic"] == {"i": 1700, "o": 1850}
     # Others inherit until Phase 2.
-    for p in ("openai", "google", "xai"):
+    for p in ("openai", "google"):
         assert bases[p]["i"] == 1700
         assert bases[p]["o"] == 1850
 

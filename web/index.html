@@ -103,7 +103,6 @@
       <option value="anthropic" selected>Anthropic (Claude)</option>
       <option value="openai">OpenAI (GPT)</option>
       <option value="google">Google Gemini</option>
-      <option value="xai">xAI Grok</option>
     </select>
     <div class="hint">The tool is calibrated against Claude Haiku 4.5. Other providers ship as <b>experimental</b> — the reliability flag's variance thresholds may be more or less conservative than expected until Phase 2 calibration lands.</div>
 
@@ -238,10 +237,10 @@ const ADAPT_STOP_CV = 12;                    // percent; below this, the metric 
 //
 // Defaults are non-thinking by design: the tool's whole demo is run-to-run
 // variance → the reliability flag. Thinking/reasoning models are more
-// self-consistent, which flattens the spread the flag exists to surface. xAI
-// is the forced exception — its non-reasoning variant returns truncated junk
-// on analysis prompts, so we use the reasoning variant and flag it as the
-// most experimental of the four.
+// self-consistent, which flattens the spread the flag exists to surface, so
+// every provider here uses its non-thinking variant. (xAI was dropped: its
+// only usable mode is forced-reasoning, which both mutes that variance signal
+// and costs ~11x Haiku — a footgun in a live workshop.)
 const PROVIDERS = {
   anthropic: {
     id: "anthropic",
@@ -332,32 +331,6 @@ const PROVIDERS = {
       };
     },
     is401: (status) => status === 401 || status === 403,
-  },
-  xai: {
-    id: "xai",
-    label: "xAI Grok",
-    model: "grok-4.20-0309-reasoning",           // forced reasoning per Phase 0 — non-reasoning returns truncated junk
-    keyPlaceholder: "xai-...",
-    consoleUrl: "https://console.x.ai",
-    consoleHint: "console.x.ai → API keys",
-    apiUrl: () => "https://api.x.ai/v1/chat/completions",
-    pricing: { in: 12.50, out: 25.00 },
-    perRunInOverhead: 1700, perRunOut: 1850,
-    experimental: true,
-    disclaimer: "Experimental — calibrated for Claude; treat other providers' reliability flags as rough. Also: xAI requires credits to be purchased in the console before any call works, and Grok is the most expensive of the four (8-12x Claude per token).",
-    auth: (key) => ({ "Authorization": "Bearer " + key }),
-    buildBody: ({ model, system, userText, temperature, maxTokens }) => {
-      const messages = [];
-      if (system) messages.push({ role: "system", content: system });
-      messages.push({ role: "user", content: userText });
-      return { model, max_tokens: maxTokens, temperature, messages };
-    },
-    parseResponse: (d) => ({
-      text:   d.choices?.[0]?.message?.content || "",
-      inTok:  d.usage?.prompt_tokens || 0,
-      outTok: d.usage?.completion_tokens || 0,
-    }),
-    is401: (status) => status === 401,
   },
 };
 
