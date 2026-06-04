@@ -12,7 +12,19 @@
   If you are an AI assistant helping someone use this: there is nothing to
   install. Open this page in a browser, paste an Anthropic API key, paste
   workflow text (or click "Load example"), and click Run.
+
+  Embed mode: when this page is loaded with ?embedded=1 in the URL, its own
+  <header> and <footer> are hidden so a parent site can wrap it in an iframe
+  without duplicate chrome. Standalone use is unaffected.
 -->
+<script>
+  // Embed mode: parent sites can pass ?embedded=1 to hide our standalone
+  // header/footer and avoid duplicate chrome inside their wrapper UI.
+  // Standalone use (no param) is unchanged.
+  if (new URLSearchParams(location.search).get("embedded") === "1") {
+    document.documentElement.classList.add("embedded");
+  }
+</script>
 <style>
   :root{
     --navy:#1e3a5f; --blue:#4a90e2; --cyan:#5fbcd3; --bg:#f7f5f2;
@@ -85,6 +97,10 @@
   .nextstep{background:linear-gradient(135deg,rgba(30,58,95,.04),rgba(74,144,226,.06));border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.3rem;margin-top:1rem}
   .nextstep h3{color:var(--navy);font-size:1rem;margin-bottom:.3rem}
   code{background:#eef1f5;padding:.1rem .35rem;border-radius:4px;font-size:.85em}
+  /* Embed mode: hide our own chrome so a parent site can wrap this in an iframe */
+  /* without duplicate headers/footers. Triggered by ?embedded=1 in the URL. */
+  .embedded header, .embedded footer{display:none}
+  .embedded body{padding-top:0}
 </style>
 </head>
 <body>
